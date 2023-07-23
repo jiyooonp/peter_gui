@@ -30,6 +30,17 @@ class VisualServoingNode:
         self.arm_group =moveit_commander.MoveGroupCommander("xarm6")
         self.arm_group.set_max_velocity_scaling_factor(0.5)
         
+        # set a new init position
+        self.arm_group.set_named_target("init")
+        # define init pose
+        init_pose = geometry_msgs.msg.Pose()
+        init_pose.position.x = 0.0
+        init_pose.position.y = 0.0
+        init_pose.position.z = 0.0
+
+       
+
+
         # # Set the planning reference frame (usually the base_link)
         # self.arm_group.set_pose_reference_frame("link_base")
 
@@ -60,6 +71,47 @@ class VisualServoingNode:
 
     def joystick_callback(self, data):
         self.joy_state = data
+        # check if any of the joystick buttons are pressed
+
+        #if A button is pressed go back to init position
+        if self.joy_state.buttons[0] == 1:
+            self.arm_group.set_named_target("init")
+            self.arm_group.go(wait=True)
+            self.arm_group.stop()
+            self.arm_group.clear_pose_targets()
+            return
+        
+        #if B button is pressed go to the pick position
+        if self.joy_state.buttons[1] == 1:
+            self.arm_group.set_named_target("pick")
+            self.arm_group.go(wait=True)
+            self.arm_group.stop()
+            self.arm_group.clear_pose_targets()
+            return
+        
+        # if LB button is pressed call cutter service
+        if self.joy_state.buttons[4] == 1:
+            rospy.wait_for_service('cutter')
+            try:
+                cutter = rospy.ServiceProxy('cutter', Empty)
+                # pass args to service
+                cutter()
+
+            except rospy.ServiceException as e:
+                print("Service call failed: %s"%e)
+            return
+
+        # if RB button is pressed call gripper service
+        if self.joy_state.buttons[5] == 1:
+            rospy.wait_for_service('gripper')
+            try:
+                gripper = rospy.ServiceProxy('gripper', Empty)
+                # pass args to service
+                gripper()
+
+            except rospy.ServiceException as e:
+                print("Service call failed: %s"%e)
+            return
         
     def teleop(self):
         # process incoming joystick message

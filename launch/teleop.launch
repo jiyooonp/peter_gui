@@ -1,0 +1,9 @@
+<launch>
+<!--launch file for launching the joystick node and the teleoperation node-->
+  <node name="joystick_node" pkg="joy" type="joy_node">
+  </node>
+    <!-- Include and launch visual_servo.launch -->
+  <include file="$(find visual_servo)/launch/visual_servo.launch"></include>
+
+  
+</launch>

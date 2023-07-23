@@ -1,0 +1,16 @@
+<launch>
+
+
+      <!-- Include and launch xarm6 in gazebo-->
+  <include file="$(find xarm_gazebo)/launch/xarm6_beside_table.launch"></include>
+
+      <!-- Include and launch xarm6-->
+  <include file="$(find xarm6_moveit_config)/launch/xarm6_moveit_gazebo.launch">  </include>
+
+
+  
+  <!-- Include and launch teleop.launch -->
+  <include file="$(find visual_servo)/launch/teleop.launch"></include>
+
+  
+</launch>

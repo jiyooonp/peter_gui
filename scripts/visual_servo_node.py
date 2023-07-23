@@ -28,7 +28,8 @@ class VisualServoingNode:
         self.joy_state = Joy()
         moveit_commander.roscpp_initialize([])
         self.arm_group =moveit_commander.MoveGroupCommander("xarm6")
-
+        self.arm_group.set_max_velocity_scaling_factor(0.5)
+        
         # # Set the planning reference frame (usually the base_link)
         # self.arm_group.set_pose_reference_frame("link_base")
 
@@ -63,7 +64,7 @@ class VisualServoingNode:
     def teleop(self):
         # process incoming joystick message
         if self.joy_state!=Joy():
-            scale = 0.001
+            scale = 0.01
             rel_x=0.0
             rel_y=0.0
             rel_z=0.0
@@ -74,19 +75,19 @@ class VisualServoingNode:
 
             # check if negative z axis is pressed
             if self.joy_state.axes[2] <= 1.0:
-                rel_z = -abs(1-self.joy_state.axes[2] )*scale      
+                rel_z = -abs(1-self.joy_state.axes[2])*scale      
             
             # check if positive z axis is pressed
             if self.joy_state.axes[5] <= 1.0:
-                rel_z = abs(1-self.joy_state.axes[5] )*scale
+                rel_z = abs(1-self.joy_state.axes[5])*scale
    
             # check if x axis is pressed 
-            if self.joy_state.axes[3] != 0.0:
-                rel_x = self.joy_state.axes[3]*scale
+            if self.joy_state.axes[4] != 0.0:
+                rel_x = self.joy_state.axes[4]*scale
 
             # check if y axis is pressed
-            if self.joy_state.axes[4] != 0.0:
-                rel_y = self.joy_state.axes[4]*scale
+            if self.joy_state.axes[3] != 0.0:
+                rel_y = self.joy_state.axes[3]*scale
             
             # only plan if there is a change in the pose
             if rel_x == 0.0 and rel_y == 0.0 and rel_z == 0.0:
@@ -97,12 +98,12 @@ class VisualServoingNode:
                 wpose.position.x += rel_x
                 wpose.position.y += rel_y  
                 wpose.position.z += rel_z 
-            
+                
                 waypoints.append(copy.deepcopy(wpose))
 
-              
+                self.arm_group
                 (plan, fraction) = self.arm_group.compute_cartesian_path(
-                    waypoints, 0.01, 0.0  # waypoints to follow  # eef_step
+                    waypoints, 0.001, 0.0  # waypoints to follow  # eef_step
                 )  # jump_threshold
                 
                 self.move(plan)

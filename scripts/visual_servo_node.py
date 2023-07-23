@@ -64,39 +64,49 @@ class VisualServoingNode:
         # process incoming joystick message
         if self.joy_state!=Joy():
             scale = 0.001
-            rel_z=0.0  
+            rel_x=0.0
+            rel_y=0.0
+            rel_z=0.0
+
+            # start with the current pose
+            waypoints = []
+            wpose = self.arm_group.get_current_pose().pose
+
+            # check if negative z axis is pressed
             if self.joy_state.axes[2] <= 1.0:
-                rel_z = -abs(1-self.joy_state.axes[2] )*scale        
-                waypoints = []
-
-                wpose = self.arm_group.get_current_pose().pose
+                rel_z = -abs(1-self.joy_state.axes[2] )*scale      
             
+            # check if positive z axis is pressed
+            if self.joy_state.axes[5] <= 1.0:
+                rel_z = abs(1-self.joy_state.axes[5] )*scale
+   
+            # check if x axis is pressed 
+            if self.joy_state.axes[3] != 0.0:
+                rel_x = self.joy_state.axes[3]*scale
 
-                print(str(rel_z))
-                # import pdb 
-                # pdb.set_trace()
-                wpose.position.z += rel_z  # First move up (z)
-                #wpose.position.y += scale * 0.2  # and sideways (y)
+            # check if y axis is pressed
+            if self.joy_state.axes[4] != 0.0:
+                rel_y = self.joy_state.axes[4]*scale
+            
+            # only plan if there is a change in the pose
+            if rel_x == 0.0 and rel_y == 0.0 and rel_z == 0.0:
+                return
+
+            else:
+                # add all relative values to the current pose
+                wpose.position.x += rel_x
+                wpose.position.y += rel_y  
+                wpose.position.z += rel_z 
+            
                 waypoints.append(copy.deepcopy(wpose))
 
-                #wpose.position.x += scale * 0.1  # Second move forward/backwards in (x)
-                #waypoints.append(copy.deepcopy(wpose))
-
-                # wpose.position.y -= scale * 0.1  # Third move sideways (y)
-                # waypoints.append(copy.deepcopy(wpose))
-
-                # We want the Cartesian path to be interpolated at a resolution of 1 cm
-                # which is why we will specify 0.01 as the eef_step in Cartesian
-                # translation.  We will disable the jump threshold by setting it to 0.0,
-                # ignoring the check for infeasible jumps in joint space, which is sufficient
-                # for this tutorial.
+              
                 (plan, fraction) = self.arm_group.compute_cartesian_path(
                     waypoints, 0.01, 0.0  # waypoints to follow  # eef_step
                 )  # jump_threshold
-
-                # Note: We are just planning, not asking move_group to actually move the robot yet:
+                
                 self.move(plan)
-          
+        
 
     def move(self, plan):
         self.arm_group.execute(plan, wait=True)

@@ -29,19 +29,26 @@ class VisualServoingNode:
         moveit_commander.roscpp_initialize([])
         self.arm_group =moveit_commander.MoveGroupCommander("xarm6")
         self.arm_group.set_max_velocity_scaling_factor(0.5)
-        
-        # set a new init position
-        self.arm_group.set_named_target("init")
-        # define init pose
-        init_pose = geometry_msgs.msg.Pose()
-        init_pose.position.x = 0.0
-        init_pose.position.y = 0.0
-        init_pose.position.z = 0.0
 
-       
+        # get init joint ROS params
+        joint1_init = rospy.get_param('/joint1_init')
+        joint2_init = rospy.get_param('/joint2_init')
+        joint3_init = rospy.get_param('/joint3_init')
+        joint4_init = rospy.get_param('/joint4_init')
+        joint5_init = rospy.get_param('/joint5_init')
+        joint6_init = rospy.get_param('/joint6_init')
+        self.init_joint_positions = [joint1_init, joint2_init, joint3_init, joint4_init, joint5_init, joint6_init]
 
+        # get init joint ROS params
+        joint1_basket = rospy.get_param('/joint1_basket')
+        joint2_basket = rospy.get_param('/joint2_basket')
+        joint3_basket = rospy.get_param('/joint3_basket')
+        joint4_basket = rospy.get_param('/joint4_basket')
+        joint5_basket = rospy.get_param('/joint5_basket')
+        joint6_basket = rospy.get_param('/joint6_basket')
+        self.basket_joint_positions = [joint1_basket, joint2_basket, joint3_basket, joint4_basket, joint5_basket, joint6_basket]
 
-        # # Set the planning reference frame (usually the base_link)
+        # Set the planning reference frame (usually the base_link)
         # self.arm_group.set_pose_reference_frame("link_base")
 
         # # Set the end effector link (usually the last link in the robot's arm)
@@ -73,47 +80,50 @@ class VisualServoingNode:
         self.joy_state = data
         # check if any of the joystick buttons are pressed
 
-        #if A button is pressed go back to init position
+        # if A button is pressed go back to init position
         if self.joy_state.buttons[0] == 1:
-            self.arm_group.set_named_target("init")
-            self.arm_group.go(wait=True)
-            self.arm_group.stop()
-            self.arm_group.clear_pose_targets()
+            self.arm_group.go(self.init_joint_positions, wait=True)
             return
-        
-        #if B button is pressed go to the pick position
+
+        # if B button is pressed go to basket drop position 
         if self.joy_state.buttons[1] == 1:
-            self.arm_group.set_named_target("pick")
-            self.arm_group.go(wait=True)
-            self.arm_group.stop()
-            self.arm_group.clear_pose_targets()
-            return
-        
-        # if LB button is pressed call cutter service
-        if self.joy_state.buttons[4] == 1:
-            rospy.wait_for_service('cutter')
-            try:
-                cutter = rospy.ServiceProxy('cutter', Empty)
-                # pass args to service
-                cutter()
-
-            except rospy.ServiceException as e:
-                print("Service call failed: %s"%e)
+            self.arm_group.go(self.basket_joint_positions, wait=True)
             return
 
-        # if RB button is pressed call gripper service
-        if self.joy_state.buttons[5] == 1:
-            rospy.wait_for_service('gripper')
-            try:
-                gripper = rospy.ServiceProxy('gripper', Empty)
-                # pass args to service
-                gripper()
+        # #if B button is pressed go to the pick position
+        # if self.joy_state.buttons[1] == 1:
+        #     self.arm_group.set_named_target("pick")
+        #     self.arm_group.go(wait=True)
+        #     self.arm_group.stop()
+        #     self.arm_group.clear_pose_targets()
+        #     return
 
-            except rospy.ServiceException as e:
-                print("Service call failed: %s"%e)
-            return
+        # # if LB button is pressed call cutter service
+        # if self.joy_state.buttons[4] == 1:
+        #     rospy.wait_for_service('cutter')
+        #     try:
+        #         cutter = rospy.ServiceProxy('cutter', Empty)
+        #         # pass args to service
+        #         cutter()
+
+        #     except rospy.ServiceException as e:
+        #         print("Service call failed: %s"%e)
+        #     return
+
+        # # if RB button is pressed call gripper service
+        # if self.joy_state.buttons[5] == 1:
+        #     rospy.wait_for_service('gripper')
+        #     try:
+        #         gripper = rospy.ServiceProxy('gripper', Empty)
+        #         # pass args to service
+        #         gripper()
+
+        #     except rospy.ServiceException as e:
+        #         print("Service call failed: %s"%e)
+        #     return
         
     def teleop(self):
+
         # process incoming joystick message
         if self.joy_state!=Joy():
             scale = 0.01
@@ -126,11 +136,11 @@ class VisualServoingNode:
             wpose = self.arm_group.get_current_pose().pose
 
             # check if negative z axis is pressed
-            if self.joy_state.axes[2] <= 1.0:
-                rel_z = -abs(1-self.joy_state.axes[2])*scale      
+            if self.joy_state.axes[2] < 1.0 and self.joy_state.axes[2] != 0:
+                rel_z = -abs(1-self.joy_state.axes[2])*scale  
             
             # check if positive z axis is pressed
-            if self.joy_state.axes[5] <= 1.0:
+            if self.joy_state.axes[5] < 1.0 and self.joy_state.axes[5] != 0:
                 rel_z = abs(1-self.joy_state.axes[5])*scale
    
             # check if x axis is pressed 
@@ -149,7 +159,7 @@ class VisualServoingNode:
                 # add all relative values to the current pose
                 wpose.position.x += rel_x
                 wpose.position.y += rel_y  
-                wpose.position.z += rel_z 
+                wpose.position.z += rel_z
                 
                 waypoints.append(copy.deepcopy(wpose))
 

@@ -9,6 +9,6 @@
   <node name="visual_servo_node" pkg="visual_servo" type="visual_servo_node.py">
     <param name="target_x" value="320" />  <!-- Adjust the target_x and target_y as needed -->
     <param name="target_y" value="240" />
-    <param name="p_gain" value="0.001" />
+    <param name="p_gain" value="0.001" />my_package
   </node>
 </launch>

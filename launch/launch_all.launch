@@ -3,9 +3,9 @@
    <arg name="robot_ip" default="192.168.1.214"/>
 
   <!-- Include and launch xarm6-->
-  <include file="$(find xarm6_moveit_config)/launch/realMove_exec.launch">
+  <!-- <include file="$(find xarm6_moveit_config)/launch/realMove_exec.launch">
    <arg name="robot_ip" value="$(arg robot_ip)"/>
-  </include>
+  </include> -->
 
     <!-- Define inital position joint space pose parameters -->
     <param name="/joint1_init" value="0.0015"/>
@@ -27,6 +27,6 @@
   <include file="$(find visual_servo)/launch/teleop.launch"></include>
 
   <!-- Include and launch visual_servo.launch -->
-  <!-- <include file="$(find ag_gripper_driver)/launch/gripper.launch"></include> -->
+  <include file="$(find ag_gripper_driver)/launch/gripper.launch"></include>
 
 </launch>

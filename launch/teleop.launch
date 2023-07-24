@@ -37,11 +37,12 @@
 
       <!-- Include and launch visual_servo.launch -->
   <include file="$(find visual_servo)/launch/visual_servo.launch"></include>
-
+  
       <!-- Include and launch visual_servo.launch -->
   <include file="$(find xarm_bringup)/launch/xarm6_server.launch">
   <arg name="robot_ip" value="$(arg robot_ip)"/>
   </include>
+
 
 
   

@@ -34,7 +34,7 @@ def draw_all(img, xywh, mask):
     plt.imshow(img)
 
     # Draw Peduncle
-    mask = mask.xy[0]
+    mask = mask.masks[0]
     polygon = Polygon(mask)
     x, y = polygon.exterior.xy
     plt.fill(x, y, color="blue", alpha=0.5)
@@ -88,15 +88,15 @@ class PerceptionNode:
         self.bridge = CvBridge()
 
         # Define the RealSense image subscriber
-        self.image_subscriber = rospy.Subscriber('/camera/color/image_raw', Image, self.image_callback)
-        self.image_publisher = rospy.Publisher('/pepper_yolo_results', Image, queue_size=10)
+        self.image_subscriber = rospy.Subscriber('/camera/color/image_raw', Image, self.image_callback, queue_size=1)
+        self.image_publisher = rospy.Publisher('/pepper_yolo_results', Image, queue_size=1)
 
         curr_path = os.getcwd()
         print(curr_path)
 
         # Define the YOLO model
-        self.yolo_pepper = YOLO(curr_path+'/src/ISU_Demo/weights/pepper_fruit_best_4.pt')
-        self.yolo_peduncle = YOLO(curr_path+'/src/ISU_Demo/weights/pepper_peduncle_best_4.pt')
+        self.yolo_pepper = YOLO('/home/sridevi/iowa_ws/src/ISU_Demo/weights/pepper_fruit_best_4.pt')
+        self.yolo_peduncle = YOLO('home/sridevi/iowa_ws/src/ISU_Demo/weights/pepper_peduncle_best_4.pt')
 
     def image_callback(self, msg):
         try:
@@ -121,27 +121,41 @@ class PerceptionNode:
         mask= None
         for result in results_pepper:
             boxes = result.boxes  # Boxes object for bbox outputs
-            for box in boxes:
-                one_box = box[0]
-                xywh = one_box.xywh.tolist()
-                # pil_image = draw_pepper_fruits(image, xywh)
+            box=boxes.xyxy[0].numpy()#only take the first bb
+
+
 
 
         for result in results_peduncle:
             mask = result.masks
-            boxes = result.boxes  # Boxes object for bbox outputs
-            # print("mask: " , mask)
-            # print("boxes: " , boxes)
-            # pil_image = draw_pepper_peduncles(pil_image, mask)
-        pil_image = draw_all(image, xywh, mask)
-        np_image = np.array(pil_image)
+            boxes = result.boxes
+            box_peduncle = boxes.xyxy[0].numpy()
+      
+        if box is not []:
+         
+            p1 =(int(box[0]),int(box[1]))
+            p2 = (int(box[2]),int(box[3]))
+            cv2.rectangle(image,p1,p2,(0,0,255),10)
+            image_msg_bb= CvBridge().cv2_to_imgmsg(image,"bgr8")
+            self.image_publisher.publish(image_msg_bb)
 
-        # Convert BGR image to RGB (OpenCV uses BGR by default)
-        rgb_image = np_image
-        # Display the image using cv2.imshow()
-        cv2.imshow('Image', rgb_image)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
+        if box_peduncle is not []:
+            
+            p3 =(int(box_peduncle[0]),int(box_peduncle[1]))
+            p4 = (int(box_peduncle[2]),int(box_peduncle[3]))
+            cv2.rectangle(image,p3,p4,(255,0,0),10)
+     
+        image_msg_bb= CvBridge().cv2_to_imgmsg(image,"bgr8")
+        self.image_publisher.publish(image_msg_bb)
+        # pil_image = draw_all(image, xywh, mask)
+        # np_image = np.array(pil_image)
+
+        # # Convert BGR image to RGB (OpenCV uses BGR by default)
+        # rgb_image = np_image
+        # # Display the image using cv2.imshow()
+        # cv2.imshow('Image', rgb_image)
+        # cv2.waitKey(0)
+        # cv2.destroyAllWindows()
         return image
 
 if __name__ == '__main__':

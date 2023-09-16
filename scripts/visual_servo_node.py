@@ -29,10 +29,10 @@ class VisualServoingNode:
 
         # Subscribe to perception poi message
         self.peduncle_center_sub = rospy.Subscriber(
-            '/peduncle_center', Point, self.peduncle_center_callback)
+            '/peduncle_center', Point, self.pepper_center_callback)
 
         self.pepper_center_sub = rospy.Subscriber(
-            '/pepper_center', Point, self.pepper_center_callback)
+            '/pepper_center', Point, self.peduncle_center_callback)
 
         # Publish a command velocity
         self.cmd_vel_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=1)
@@ -52,7 +52,7 @@ class VisualServoingNode:
         # Calculate error between poi and image center
         target_error_x = self.target_x - self.actual_x
         target_error_y = self.target_y - self.actual_y
-        print(target_error_x, target_error_y, self.actual_z)
+        # print(target_error_x, target_error_y, self.actual_z)
 
         # Normalize errors
         target_error_x = target_error_x/self.image_width
@@ -60,9 +60,15 @@ class VisualServoingNode:
 
         # Visual servoing control law (velocities set according to RealSense frame)
         vel_cmd = Twist()
-        vel_cmd.linear.x = self.k_x * target_error_y
-        vel_cmd.linear.y = self.k_y * target_error_x
-        vel_cmd.linear.z = self.k_z
+        vel_cmd.linear.x = self.k_x * target_error_x
+        vel_cmd.linear.y = self.k_y * target_error_y
+        vel_cmd.linear.z = 0 #self.k_z
+        # if vel_cmd.linear.y > 0 :
+        #     print("go up cuz x is negative")
+        # elif vel_cmd.linear.y == 0:
+        #     print("don't move")
+        # else:
+        #     print("go down cuz x is positive")
 
         # Publish velocity
         self.cmd_vel_pub.publish(vel_cmd)

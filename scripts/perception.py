@@ -103,7 +103,7 @@ class PerceptionNode:
 
         # Define the YOLO model
         rospack = rospkg.RosPack()
-        package_name = 'visual_servo'
+        package_name = 'perception_refactor'
         package_path = rospack.get_path(package_name)
 
         self.yolo_pepper = YOLO(
@@ -127,6 +127,8 @@ class PerceptionNode:
         self.peduncle_center = None
         self.depth_image = None
 
+        self.peduncle_center = [0, 0, 0]
+
     def image_callback(self, msg):
         try:
             # Convert ROS Image message to OpenCV image
@@ -149,12 +151,24 @@ class PerceptionNode:
         # pil_image = None
         # xywh = None
         # mask = None
+
+        self.pepper_center = Point()
+        self.pepper_center.x = 320.0
+        self.pepper_center.y = 240.0
+        self.pepper_center.z = 0
+
+
+        self.peduncle_center = Point()
+        self.peduncle_center.x = 320.0
+        self.peduncle_center.y = 240.0
+        self.peduncle_center.z = 0
+
+
         for result in results_pepper:
             boxes = result.boxes  # Boxes object for bbox outputs
 
-            if boxes.xyxy.numpy().size != 0:
+            if boxes.xyxy.cpu().numpy().size != 0:
                 box = boxes.xyxy[0]  # only take the first bb
-                self.pepper_center = Point()
 
                 # These are in RealSense coordinate system
                 self.pepper_center.x = int((box[0] + box[2]) / 2)
@@ -165,7 +179,6 @@ class PerceptionNode:
                 self.pepper_center.z = 0.001*self.depth_image[self.pepper_center.y,
                                                               self.pepper_center.x]
 
-                self.pepper_center_publisher.publish(self.pepper_center)
 
                 p1 = (int(box[0]), int(box[1]))
                 p2 = (int(box[2]), int(box[3]))
@@ -174,7 +187,7 @@ class PerceptionNode:
         for result in results_peduncle:
             mask = result.masks
             boxes = result.boxes
-            if boxes.xyxy.numpy().size != 0:
+            if boxes.xyxy.cpu().numpy().size != 0:
                 box_peduncle = boxes.xyxy[0]
                 box = boxes.xyxy[0]  # only take the first bb
 
@@ -189,11 +202,14 @@ class PerceptionNode:
                 self.peduncle_center.z = 0.001*self.depth_image[self.peduncle_center.y,
                                                                 self.peduncle_center.x]
 
-                self.peduncle_center_publisher.publish(self.peduncle_center)
 
                 p3 = (int(box_peduncle[0]), int(box_peduncle[1]))
                 p4 = (int(box_peduncle[2]), int(box_peduncle[3]))
                 cv2.rectangle(image, p3, p4, (255, 0, 0), 10)
+
+        self.pepper_center_publisher.publish(self.pepper_center)
+        self.peduncle_center_publisher.publish(self.peduncle_center)
+
 
         try:
             image_msg_bb = self.bridge.cv2_to_imgmsg(image, "rgb8")
@@ -234,3 +250,17 @@ if __name__ == '__main__':
         rospy.spin()
     except rospy.ROSInterruptException:
         pass
+
+
+'''
+[ERROR] [1694901681.723798]: bad callback: <bound method PerceptionNode.image_callback of <__main__.PerceptionNode object at 0x7f12b26b0eb0>>
+Traceback (most recent call last):
+  File "/opt/ros/noetic/lib/python3/dist-packages/rospy/topics.py", line 750, in _invoke_callback
+    cb(msg)
+  File "/home/sridevi/xarm_ws/src/ISU_Demo/scripts/perception.py", line 137, in image_callback
+    _ = self.run_yolo(cv_image)
+  File "/home/sridevi/xarm_ws/src/ISU_Demo/scripts/perception.py", line 155, in run_yolo
+    if boxes.xyxy.numpy().size != 0:
+TypeError: can't convert cuda:0 device type tensor to numpy. Use Tensor.cpu() to copy the tensor to host memory first.
+
+'''

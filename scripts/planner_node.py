@@ -2,6 +2,7 @@ import rospy
 from sensor_msgs.msg import Joy
 from std_msgs.msg import Int16
 from geometry_msgs.msg import Twist
+import math
 
 """
 Listen to state message. 
@@ -22,8 +23,8 @@ class PlannerNode:
         self.visual_servoing_sub = rospy.Subscriber('/visual_servo', Twist, self.visual_servoing_callback, queue_size=1) #visual servoing messages
 
         # publishers
-        self.joy_pub = rospy.Publisher('/joy_teleop/joy', Joy, queue_size=1) # joystick commands pub (which dom's teleop script is subscribed to)
-        self.ee_joy_pub = rospy.Publisher('/ee_joy', Joy, queue_size=1)      # forwarding joystick commands to ee # todo: update topic name 
+        self.joy_pub = rospy.Publisher('/joy', Joy, queue_size=1) # joystick commands pub (which dom's teleop script is subscribed to)
+        self.ee_joy_pub = rospy.Publisher('/ee_joy', Joy, queue_size=1)      # forwarding joystick commands to ee # todo: update topic name
         self.arm_pub = rospy.Publisher('/arm_control', Int16, queue_size=1)  # arm control # todo: when should this be used?
         self.ee_pub = rospy.Publisher('/ee_control', Int16, queue_size=1)    # publisher for EE control # todo: when should this be used?
 
@@ -46,9 +47,9 @@ class PlannerNode:
         # convert twist message to a joystick command and then publish the joystick command to the arm and EE
 
         # get the visual servo values
-        dx = self.visual_servoing_state.linear.x # horizontal
-        dy = self.visual_servoing_state.linear.y # vertical
-        dz = self.visual_servoing_state.linear.z # depth
+        dy = self.visual_servoing_state.linear.x  # horizontal
+        dz = self.visual_servoing_state.linear.y  # vertical
+        dx = self.visual_servoing_state.linear.z  # depth
 
         # set scale factors
         x_scale = 1
@@ -56,13 +57,20 @@ class PlannerNode:
         z_scale = 1
         
         # update the fake joy message to publish
-        # todo - get matching joystick button and check if these take positive/negative values and what the range is
-        self.fake_joy.axes[] = x_scale * dx # left/right button on joystick
-        self.fake_joy.axes[] = y_scale * dy # up/down button on joystick
-        self.fake_joy.axes[] = z_scale * dz # forward/back button on joystick
+
+        self.fake_joy.axes[4] = x_scale * dx  # forward/back button on joystick
+
+        # move left/right
+        self.fake_joy.axes[6] = y_scale * dy * math.cos(45)    # left/right
+        self.fake_joy.axes[7] = y_scale * dy * math.cos(45)   # up/down
+
+        # move up and down
+        self.fake_joy.axes[6] += z_scale * dz * math.cos(45)    # left/right
+        self.fake_joy.axes[7] += z_scale * dz * math.cos(45)   # up/down
 
         return
     
+
     def run(self):
         """check what state the robot is in and run the corresponding planner"""
         # idle state

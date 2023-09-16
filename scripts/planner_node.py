@@ -61,12 +61,12 @@ class PlannerNode:
         self.fake_joy.axes[4] = x_scale * dx  # forward/back button on joystick
 
         # move left/right
-        self.fake_joy.axes[6] = y_scale * dy * math.cos(45)    # left/right
-        self.fake_joy.axes[7] = y_scale * dy * math.cos(45)   # up/down
+        self.fake_joy.axes[6] = y_scale * dy * math.cos(math.pi/4)    # left/right
+        self.fake_joy.axes[7] = y_scale * dy * math.cos(math.pi/4)   # up/down
 
         # move up and down
-        self.fake_joy.axes[6] += z_scale * dz * math.cos(45)    # left/right
-        self.fake_joy.axes[7] += z_scale * dz * math.cos(45)   # up/down
+        self.fake_joy.axes[6] += z_scale * dz * math.cos(math.pi/4)    # left/right
+        self.fake_joy.axes[7] += z_scale * dz * math.cos(math.pi/4)   # up/down
 
         return
     

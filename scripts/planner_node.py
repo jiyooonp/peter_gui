@@ -17,9 +17,8 @@ def send_to_xarm(val):
     elif val < -0.1:
         return -1
     else:
-        return 0 
+        return 0
     
-
 class PlannerNode:
     def __init__(self):
         rospy.init_node('planner_node', anonymous=True)

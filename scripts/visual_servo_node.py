@@ -21,7 +21,7 @@ class VisualServoingNode:
         # Set control gains
         self.k_x = 1
         self.k_y = 1
-        self.k_z = 0.5
+        self.k_z = 1
 
         # pepper center and peduncle center
         self.pepper_center = [0, 0, 0]
@@ -62,7 +62,7 @@ class VisualServoingNode:
         vel_cmd = Twist()
         vel_cmd.linear.x = self.k_x * target_error_x
         vel_cmd.linear.y = self.k_y * target_error_y
-        vel_cmd.linear.z = 0 #self.k_z
+        vel_cmd.linear.z = max(min(self.k_z * self.actual_z, 1), -1)
         # if vel_cmd.linear.y > 0 :
         #     print("go up cuz x is negative")
         # elif vel_cmd.linear.y == 0:

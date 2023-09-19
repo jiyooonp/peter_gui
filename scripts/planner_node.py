@@ -10,6 +10,7 @@ import math
 Listen to state message. 
 Depending on state, call the appropriate callback function and run the corresponding planner. 
 """
+
 def send_to_xarm(val):
     if val > 0.1:
         return 1
@@ -75,30 +76,25 @@ class PlannerNode:
         dz = self.visual_servoing_state.linear.y  # vertical
         dx = self.visual_servoing_state.linear.z  # depth
         # print(f"dx: {dx}, dy: {dy}, dz: {dz}")
-
-        # set scale factors
-        x_scale = 1
-        y_scale = 1
-        z_scale = 1
         
         # dont want to change depth rn
-        dx = 0
+        # dx = 0
 
-        # update the fake joy message to publish
-        self.fake_joy.axes[4] = x_scale * dx  # forward/back button on joystick
 
-        y =  y_scale * dy * math.cos(math.radians(45)) + z_scale * dz * math.cos(math.radians(45))
+        y =  dy * math.cos(math.radians(45)) + dz * math.cos(math.radians(45))
         # side_z = dy * math.cos(math.pi/4)
 
-        z = y_scale * -dy * math.sin(math.radians(45)) + z_scale * dz * math.cos(math.radians(45))
+        z = -dy * math.sin(math.radians(45)) + dz * math.cos(math.radians(45))
         # up_z = dz * math.cos(math.pi/4)
 
-
+       # update the fake joy message to publish
+        self.fake_joy.axes[4] = send_to_xarm(dx)  # forward/back button on joystick
+        print(f"forward/back: {self.fake_joy.axes[4]}")
         # move left/right
-        self.fake_joy.axes[6] = send_to_xarm(y)    # left/right
+        self.fake_joy.axes[6] = -send_to_xarm(y)    # left/right
 
         # move up/down
-        self.fake_joy.axes[7] = send_to_xarm(z)   # up/down
+        self.fake_joy.axes[7] = -send_to_xarm(z)   # up/down
 
 
         print(f"left: {self.fake_joy.axes[6]}, up: {self.fake_joy.axes[7]}")

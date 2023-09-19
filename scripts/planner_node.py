@@ -16,9 +16,8 @@ def send_to_xarm(val):
     elif val < -0.1:
         return -1
     else:
-        return 0 
+        return 0
     
-
 class PlannerNode:
     def __init__(self):
         rospy.init_node('planner_node', anonymous=True)
@@ -92,7 +91,6 @@ class PlannerNode:
 
         z = y_scale * -dy * math.sin(math.radians(45)) + z_scale * dz * math.cos(math.radians(45))
         # up_z = dz * math.cos(math.pi/4)
-
 
         # move left/right
         self.fake_joy.axes[6] = send_to_xarm(y)    # left/right

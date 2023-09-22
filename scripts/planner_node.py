@@ -38,7 +38,8 @@ class PlannerNode:
 
         # publishers
         self.joy_pub = rospy.Publisher('/joy_relay', Joy, queue_size=1) # joystick commands pub (which dom's teleop script is subscribed to)
-        self.ee_joy_pub = rospy.Publisher('/ee_joy', Joy, queue_size=1)      # forwarding joystick commands to ee # todo: update topic name
+        self.ee_joy_pub = rospy.Publisher('/ee_joy', Joy, queue_size=1) # forwarding joystick commands to ee 
+        # todo: update topic name
 
         # timer
         # timer = rospy.Timer(rospy.Duration(1.0), self.timer_callback)

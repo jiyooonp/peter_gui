@@ -27,7 +27,6 @@ class PlannerNode:
         self.state = 0
         self.joy_state = Joy()
         self.fake_joy = Joy()
-<<<<<<< HEAD
         self.visual_servoing_state = Twist()
 
         self.fake_joy.header.frame_id = "/dev/input/js0"
@@ -35,21 +34,12 @@ class PlannerNode:
         self.fake_joy.axes = [0 for _ in range(0,8)]
         self.fake_joy.buttons = [0 for _ in range(0,11)]
 
-=======
-        self.ee_pose = None
-        self.visual_servoing_state = Twist()
-    
->>>>>>> 60cb287384222888eeec96f75cc9eb6fd5b138f2
         # subscribers
         self.state_sub = rospy.Subscriber('/state', Int16, self.state_callback, queue_size=1) # state message
         self.joystick_sub = rospy.Subscriber('/joy', Joy, self.joystick_callback, queue_size=1) # joystick message        
         self.visual_servoing_sub = rospy.Subscriber('/cmd_vel', Twist, self.visual_servo, queue_size=1) #visual servoing messages
-<<<<<<< HEAD
-
-=======
         # self.empty_message = rospy.Subscriber('/cmd_vel', Twist, self.visual_servo, queue_size=1) #visual servoing messages   
         self.xarm_sub = rospy.Subscriber('/xarm/xarm_states', RobotMsg, self.robot_state_callback, queue_size=1) # joystick message
->>>>>>> 60cb287384222888eeec96f75cc9eb6fd5b138f2
         # publishers
         self.joy_pub = rospy.Publisher('/joy_relay', Joy, queue_size=1) # joystick commands pub (which dom's teleop script is subscribed to)
         self.ee_joy_pub = rospy.Publisher('/ee_joy', Joy, queue_size=1) # forwarding joystick commands to ee 
@@ -93,16 +83,6 @@ class PlannerNode:
         dz = self.visual_servoing_state.linear.y  # vertical
         dx = self.visual_servoing_state.linear.z  # depth
         # print(f"dx: {dx}, dy: {dy}, dz: {dz}")
-<<<<<<< HEAD
-
-
-
-        y =  dy * math.cos(math.radians(45)) + dz * math.cos(math.radians(45))
-        z = -dy * math.sin(math.radians(45)) + dz * math.cos(math.radians(45))
-
-        # update the fake joy message to publish
-        self.fake_joy.axes[4] = send_to_xarm(dx)  # forward/back button on joystick
-=======
         
         # dont want to change depth rn
         # dx = 0
@@ -113,7 +93,6 @@ class PlannerNode:
 
         z = -dy * math.sin(math.radians(45)) + dz * math.cos(math.radians(45))
         # up_z = dz * math.cos(math.pi/4)
->>>>>>> 60cb287384222888eeec96f75cc9eb6fd5b138f2
 
        # update the fake joy message to publish
         self.fake_joy.axes[4] = send_to_xarm(dx)  # forward/back button on joystick
@@ -144,23 +123,12 @@ class PlannerNode:
             pass
             # print("idle state")
         
-<<<<<<< HEAD
         # manual teleop state
         elif self.state == 1:
             # simply forward joystick messages to arm and EE
             # print("manual teleop state")
             self.ee_joy_pub.publish(self.joy_state) # publish to ee
             self.joy_pub.publish(self.joy_state) # publish to arm
-=======
-        # # auto visual servo state
-        # elif self.state == 2:
-        print("visual servo state")
-        
-
-        self.joy_pub.publish(self.fake_joy)
-        rospy.spin()
-        return
->>>>>>> 60cb287384222888eeec96f75cc9eb6fd5b138f2
         
         # auto visual servo state
         elif self.state == 2:

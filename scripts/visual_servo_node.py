@@ -15,8 +15,8 @@ class VisualServoingNode:
         self.image_height = 480.0
 
         # Set target x and y pixels (numpy coordinate system)
-        self.target_x = self.image_width/2
-        self.target_y = self.image_height/2
+        self.target_x = self.image_width/2 # 620
+        self.target_y = self.image_height/2 # 380 #
 
         # Set control gains
         self.k_x = 1
@@ -29,10 +29,10 @@ class VisualServoingNode:
 
         # Subscribe to perception poi message
         self.peduncle_center_sub = rospy.Subscriber(
-            '/peduncle_center', Point, self.pepper_center_callback)
+            '/peduncle_center', Point, self.peduncle_center_callback)
 
         self.pepper_center_sub = rospy.Subscriber(
-            '/pepper_center', Point, self.peduncle_center_callback)
+            '/pepper_center', Point, self.pepper_center_callback)
 
         # Publish a command velocity
         self.cmd_vel_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=1)
@@ -63,12 +63,6 @@ class VisualServoingNode:
         vel_cmd.linear.x = self.k_x * target_error_x
         vel_cmd.linear.y = self.k_y * target_error_y
         vel_cmd.linear.z = max(min(self.k_z * self.actual_z, 1), -1)
-        # if vel_cmd.linear.y > 0 :
-        #     print("go up cuz x is negative")
-        # elif vel_cmd.linear.y == 0:
-        #     print("don't move")
-        # else:
-        #     print("go down cuz x is positive")
 
         # Publish velocity
         self.cmd_vel_pub.publish(vel_cmd)

@@ -218,7 +218,6 @@ class PerceptionNode:
                 #                                               self.pepper_center.x]
 
                 self.pepper_center.z = self.get_depth(self.pepper_center.x, self.pepper_center.y)
-                print("Depth:", self.pepper_center.z)
 
                 X, Y, Z = self.get_3D_coords(
                     self.pepper_center.x, self.pepper_center.y, self.pepper_center.z)

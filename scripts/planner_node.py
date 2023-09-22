@@ -4,6 +4,8 @@ import rospy
 from sensor_msgs.msg import Joy
 from std_msgs.msg import Int16
 from geometry_msgs.msg import Twist
+from xarm_msgs.msg import RobotMsg
+
 import math
 
 """
@@ -25,15 +27,15 @@ class PlannerNode:
         self.state = 0
         self.joy_state = Joy()
         self.fake_joy = Joy()
-
+        self.ee_pose = None
         self.visual_servoing_state = Twist()
-
+    
         # subscribers
         self.state_sub = rospy.Subscriber('/state', Int16, self.state_callback, queue_size=1) # state message
         self.joystick_sub = rospy.Subscriber('/joy', Joy, self.joystick_callback, queue_size=1) # joystick message        
         self.visual_servoing_sub = rospy.Subscriber('/cmd_vel', Twist, self.visual_servo, queue_size=1) #visual servoing messages
         # self.empty_message = rospy.Subscriber('/cmd_vel', Twist, self.visual_servo, queue_size=1) #visual servoing messages   
-
+        self.xarm_sub = rospy.Subscriber('/xarm/xarm_states', RobotMsg, self.robot_state_callback, queue_size=1) # joystick message
         # publishers
         self.joy_pub = rospy.Publisher('/joy', Joy, queue_size=1) # joystick commands pub (which dom's teleop script is subscribed to)
         self.ee_joy_pub = rospy.Publisher('/ee_joy', Joy, queue_size=1)      # forwarding joystick commands to ee # todo: update topic name
@@ -47,6 +49,14 @@ class PlannerNode:
         """Callback for state message"""
         self.state = data.data
     
+    def robot_state_callback(self, data):
+        """Callback for robot state message"""
+        
+        self.ee_pose = data.pose
+        print(f"ee pose: {self.ee_pose}")
+
+
+
     def joystick_callback(self, data):
         """Callback for joystick message"""
         # update joy state
@@ -101,6 +111,11 @@ class PlannerNode:
 
         return
     
+    # def check_safety_limits(self):
+    #     """check if the robot is within safety limits"""
+
+
+    #     self.ee_pose
 
     def run(self):
         """check what state the robot is in and run the corresponding planner"""
@@ -120,6 +135,8 @@ class PlannerNode:
         # # auto visual servo state
         # elif self.state == 2:
         print("visual servo state")
+        
+
         self.joy_pub.publish(self.fake_joy)
         rospy.spin()
         return

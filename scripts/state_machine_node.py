@@ -1,9 +1,12 @@
+#!/usr/bin/env python3
+
 ### ROS node for state machine
 import rospy
 from sensor_msgs.msg import Joy
 from std_msgs.msg import Int16
 
-from xarm_msgs.srv import SentInt16, SentInt16Reponse 
+from xarm_msgs.srv import SetInt16, SetInt16Response 
+
 """
 Possible states:
 idle: 0
@@ -26,11 +29,13 @@ class StateMachineNode:
         self.state = 0 # initial state is 0 (idle)
         
         # how many times you receive the same button press
-        self.last_pressed = 0
-        self.button_counter = 0 
+        # self.last_pressed = 0
+        # self.button_counter = 0 
         
         # make a service server to be able to change the arm state
-        self.xarm_service = rospy.ServiceProxy("/xarm/set_mode", SentInt16)
+        self.xarm_mode_service = rospy.ServiceProxy("/xarm/set_mode", SetInt16)
+        self.xarm_state_service = rospy.ServiceProxy("/xarm/set_state", SetInt16)
+
 
     def joystick_callback(self, data):
         """Callback for joystick message"""
@@ -48,60 +53,69 @@ class StateMachineNode:
         '''
         
         # track if the button is being pressed for a while
-        if self.last_pressed == self.joy_state: 
-            self.button_counter += 1
-        else:
-            self.button_counter = 0
+        # if self.last_pressed == self.joy_state: 
+        #     self.button_counter += 1
+        # else:
+        #     self.button_counter = 0
         
         #if the button has been pressed for a while, change the state
-        if self.button_counter > 10:
+        # if self.button_counter > 10:
             
-            #  double square -> manual teleop
-            if self.joy_state[6]:
-                
-                self.xarm_mode_service_call(1)
-                
-                self.state_pub(1)
-                
-            # xbox button -> vs mode
-            elif self.joy_state[6]:
-                
-                self.xarm_mode_service_call(1)
-                
-                self.state_pub(2)
-                
-            # ~~~ -> enter idle mode
-            if self.joy_state[6]:
-                self.xarm_mode_service_call(0)
-                
-                self.state_pub(0)
-                
-        # track the most recent press
-        self.last_pressed = self.joy_state
-        
-    def xarm_mode_service_call(self, mode):
-        
-        request = SentInt16()  
-        request.data = mode # mode 0 does not accept move responses
-        
-        try:
-            response = self.xarm_service(request)
+        #  double square -> manual teleop
+        if self.joy_state[6] and self.state != 1:
+            self.state = 1
+            rospy.loginfo("Enter Manual Mode")
+
+        # xbox button -> vs mode
+        elif self.joy_state[8] and self.state != 2: 
+            self.state = 2
+            rospy.loginfo("Enter VS Mode")
             
-            if response.ret == 0:
-                rospy.loginfo(f"Successful Idle Entrance: {response.response}")
-                
-                self.state_pub.publish(0)
-                
-            else:
-                rospy.logwarn(f"Failed to Enter Idle Mode: {response.response}")
+        # triple line -> enter idle mode
+        elif self.joy_state[7] and self.state != 0:
+            self.state = 0
+            rospy.loginfo("Enter Idle Mode")                
+        
+    # def xarm_mode_service_call(self, mode):
+        
+    #     try:
             
-        except rospy.ServiceException as e:
-            rospy.logwarn("Service call failed: {}".format(e))
+    #         mode_response, state_response = None, None
+    #         if mode == 0:
+    #             mode_response = self.xarm_mode_service(0)
+    #             state_response = self.xarm_state_service(4)
+    #         else:
+    #             mode_response = self.xarm_mode_service(0)
+    #             state_response = self.xarm_state_service(0)
+                
+    #         if mode_response is not None and state_response.ret == mode_response.ret == 0:
+    #             rospy.logwarn(f"\n{state_response.message} {mode_response.message}")  
+    #             return True
+
+    #         elif mode_response.ret != 0: 
+    #             rospy.logwarn(f"Service mode call failed: {state_response.message}")               
+    #             return False
+            
+    #         elif state_response.ret != 0:
+    #             rospy.logwarn(f"Service state call failed: {state_response.message}")
+    #             return False
+            
+    #     except rospy.ServiceException as e:
+    #         rospy.logwarn("Service call failed: {}".format(e))
+    #         return False
 
     def run(self):
         """Main loop"""
+
         while not rospy.is_shutdown():
             # publish state
             self.state_pub.publish(self.state)
             # sleep for 10 Hz
             rospy.sleep(0.1)
+
+if __name__ == '__main__':
+    try:
+        fsm = StateMachineNode()
+        fsm.run()
+    except rospy.ROSInterruptException:
+        pass

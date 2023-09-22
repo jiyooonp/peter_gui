@@ -16,7 +16,15 @@ import cv_bridge
 import io
 import rospkg
 from geometry_msgs.msg import Point
+from visualization_msgs.msg import Marker
+from sensor_msgs.msg import CameraInfo
+from std_msgs.msg import String
 
+
+
+"""
+roslaunch realsense2_camera rs_aligned_depth.launch  filters:=pointcloud
+"""
 
 def publish_plt_image():
     # Create a ROS publisher for the Image message
@@ -97,6 +105,10 @@ class PerceptionNode:
     def __init__(self):
         rospy.init_node('perception_node')
         self.bridge = CvBridge()
+        self.depth_window = 2  # 5 x 5 window (i-2 to i+2)
+        self.camera_matrix = None
+        self.img_width = None
+        self.img_height = None
 
         curr_path = os.getcwd()
         print(curr_path)
@@ -105,13 +117,41 @@ class PerceptionNode:
         rospack = rospkg.RosPack()
         package_name = 'perception_refactor'
         package_path = rospack.get_path(package_name)
+        print(package_path)
 
         self.yolo_pepper = YOLO(
             package_path+'/weights/pepper_fruit_best_4.pt')
         self.yolo_peduncle = YOLO(
             package_path+'/weights/pepper_peduncle_best_4.pt')
+        
+        # Make marker for visualization
+        self.peduncle_marker = Marker()
+        self.peduncle_marker.type = 8
+        self.peduncle_marker.header.frame_id = "camera_color_optical_frame"
+        self.peduncle_marker.color.r = 1.0
+        self.peduncle_marker.color.g = 0.0
+        self.peduncle_marker.color.b = 0.0
+        self.peduncle_marker.color.a = 1.0
+        self.peduncle_marker.scale.x = 0.05
+        self.peduncle_marker.scale.y = 0.05
+
+        self.pepper_marker = Marker()
+        self.pepper_marker.type = 8
+        self.pepper_marker.header.frame_id = "camera_color_optical_frame"
+        self.pepper_marker.color.r = 1.0
+        self.pepper_marker.color.g = 0.0
+        self.pepper_marker.color.b = 0.0
+        self.pepper_marker.color.a = 1.0
+        self.pepper_marker.scale.x = 0.05
+        self.pepper_marker.scale.y = 0.05
+
+        self.go_straight = False
 
         # Define the RealSense image subscriber
+        self.camera_info_sub = rospy.Subscriber("/camera/color/camera_info", CameraInfo, self.camera_info_callback)
+        self.peduncle_marker_publisher = rospy.Publisher("/visualization_peduncle_marker", Marker, queue_size=1)
+        self.pepper_marker_publisher = rospy.Publisher("/visualization_pepper_marker", Marker, queue_size=1)
+
         self.depth_subscriber = rospy.Subscriber(
             '/camera/depth/image_rect_raw', Image, self.depth_callback, queue_size=1)
         self.image_subscriber = rospy.Subscriber(
@@ -122,6 +162,9 @@ class PerceptionNode:
             '/pepper_center', Point, queue_size=1)
         self.peduncle_center_publisher = rospy.Publisher(
             '/peduncle_center', Point, queue_size=1)
+        
+        self.peduncle_box_size_publisher = rospy.Publisher(
+            '/peduncle_box_size', String, queue_size=1)
 
         self.pepper_center = None
         self.peduncle_center = None
@@ -153,16 +196,20 @@ class PerceptionNode:
         # mask = None
 
         self.pepper_center = Point()
-        self.pepper_center.x = 320.0
-        self.pepper_center.y = 240.0
+        self.pepper_center.x = self.img_width/2
+        self.pepper_center.y = self.img_height/2
         self.pepper_center.z = 0
 
 
         self.peduncle_center = Point()
-        self.peduncle_center.x = 320.0
-        self.peduncle_center.y = 240.0
+        self.peduncle_center.x = 425 #self.img_width/2
+        self.peduncle_center.y = 135# self.img_height/2
         self.peduncle_center.z = 0
+        if self.go_straight:
+            self.peduncle_center.z = 1.5
+            print("going in straight")
 
+        self.pepper_marker.points = []
 
         for result in results_pepper:
             boxes = result.boxes  # Boxes object for bbox outputs
@@ -176,13 +223,30 @@ class PerceptionNode:
 
                 # Depth image is a numpy array so switch coordinates
                 # Depth is converted from mm to m
-                self.pepper_center.z = 0.001*self.depth_image[self.pepper_center.y,
-                                                              self.pepper_center.x]
+                # self.pepper_center.z = 0.001*self.depth_image[self.pepper_center.y,
+                #                                               self.pepper_center.x]
 
+                # self.pepper_center.z = self.get_depth(self.pepper_center.x, self.pepper_center.y)
+
+                # getting the peduncle depth from pepper depth
+                # self.peduncle_center.z = self.get_depth(self.pepper_center.x, self.pepper_center.y)
+
+                X, Y, Z = self.get_3D_coords(
+                    self.pepper_center.x, self.pepper_center.y, self.pepper_center.z)
+                
+                self.pepper_marker.points.append(Point(X, Y, Z))
 
                 p1 = (int(box[0]), int(box[1]))
                 p2 = (int(box[2]), int(box[3]))
                 cv2.rectangle(image, p1, p2, (0, 0, 255), 10)
+
+        if self.pepper_marker.points == []:
+            self.pepper_marker.points.append(Point(0, 0, 0))
+
+        self.pepper_marker.header.stamp = rospy.Time.now()
+        self.pepper_marker_publisher.publish(self.pepper_marker)
+
+        self.peduncle_marker.points = []
 
         for result in results_peduncle:
             mask = result.masks
@@ -197,17 +261,34 @@ class PerceptionNode:
                 self.peduncle_center.x = int((box[0] + box[2]) / 2)
                 self.peduncle_center.y = int((box[1] + box[3]) / 2)
 
+                self.peduncle_box_size_publisher.publish(str(box_peduncle[2] - box_peduncle[0]) + " " + str(box_peduncle[3] - box_peduncle[1]))
+
+                self.box_size = (box_peduncle[2] - box_peduncle[0]) * (box_peduncle[3] - box_peduncle[1])
+
+                if self.box_size >5000:
+                    self.go_straight = True
                 # Depth image is a numpy array so switch coordinates
                 # Depth is converted from mm to m
-                self.peduncle_center.z = 0.001*self.depth_image[self.peduncle_center.y,
-                                                                self.peduncle_center.x]
+                # self.peduncle_center.z = 0.001*self.depth_image[self.peduncle_center.y,
+                #                                                 self.peduncle_center.x]
+                self.peduncle_center.z = self.get_depth(self.peduncle_center.x, self.peduncle_center.y)
+                # print("depth: ", self.peduncle_center.z)
+                X, Y, Z = self.get_3D_coords(
+                    self.peduncle_center.x, self.peduncle_center.y, self.peduncle_center.z)
 
+                self.peduncle_marker.points.append(Point(X, Y, Z))
 
                 p3 = (int(box_peduncle[0]), int(box_peduncle[1]))
                 p4 = (int(box_peduncle[2]), int(box_peduncle[3]))
                 cv2.rectangle(image, p3, p4, (255, 0, 0), 10)
 
-        self.pepper_center_publisher.publish(self.pepper_center)
+        if self.peduncle_marker.points == []:
+            self.peduncle_marker.points.append(Point(0, 0, 0))
+            
+        self.peduncle_marker.header.stamp = rospy.Time.now()
+        self.peduncle_marker_publisher.publish(self.peduncle_marker)
+
+        # self.pepper_center_publisher.publish(self.pepper_center)
         self.peduncle_center_publisher.publish(self.peduncle_center)
 
 
@@ -242,6 +323,35 @@ class PerceptionNode:
         except CvBridgeError as e:
             rospy.logerr(
                 "Error converting from depth image message: {}".format(e))
+            
+    def get_depth(self, x, y):
+        left_x = max(0, x - self.depth_window)
+        right_x = min(self.img_width, x + self.depth_window)
+        top_y = max(0, y - self.depth_window)
+        bottom_y = min(self.img_height, y + self.depth_window)
+
+        depth_values = self.depth_image[top_y:bottom_y, left_x:right_x]
+        depth_values = depth_values.flatten()
+        depth = 0.001*np.median(depth_values)
+
+        depth = 0 if np.isnan(depth) else depth
+
+        return depth
+    
+
+    def camera_info_callback(self, msg):
+        # Store the camera matrix
+        self.camera_matrix = np.array(msg.K, dtype=np.float64).reshape(3, 3)
+        self.img_height = msg.height
+        self.img_width = msg.width
+        self.camera_info_sub.unregister()
+
+    def get_3D_coords(self, x, y, z):
+        # Get the 3D coordinates of the pixel
+        Z = z
+        X = (x - self.camera_matrix[0, 2]) * Z / self.camera_matrix[0, 0]
+        Y = (y - self.camera_matrix[1, 2]) * Z / self.camera_matrix[1, 1]
+        return X, Y, Z
 
 
 if __name__ == '__main__':
@@ -252,15 +362,3 @@ if __name__ == '__main__':
         pass
 
 
-'''
-[ERROR] [1694901681.723798]: bad callback: <bound method PerceptionNode.image_callback of <__main__.PerceptionNode object at 0x7f12b26b0eb0>>
-Traceback (most recent call last):
-  File "/opt/ros/noetic/lib/python3/dist-packages/rospy/topics.py", line 750, in _invoke_callback
-    cb(msg)
-  File "/home/sridevi/xarm_ws/src/ISU_Demo/scripts/perception.py", line 137, in image_callback
-    _ = self.run_yolo(cv_image)
-  File "/home/sridevi/xarm_ws/src/ISU_Demo/scripts/perception.py", line 155, in run_yolo
-    if boxes.xyxy.numpy().size != 0:
-TypeError: can't convert cuda:0 device type tensor to numpy. Use Tensor.cpu() to copy the tensor to host memory first.
-
-'''

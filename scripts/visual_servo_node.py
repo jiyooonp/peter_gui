@@ -15,8 +15,8 @@ class VisualServoingNode:
         self.image_height = 480.0
 
         # Set target x and y pixels (numpy coordinate system)
-        self.target_x = self.image_width/2 # 620
-        self.target_y = self.image_height/2 # 380 #
+        self.target_x = 425 # self.image_width/2 # 
+        self.target_y =  135 #self.image_height/2 #  #380
 
         # Set control gains
         self.k_x = 1
@@ -31,8 +31,8 @@ class VisualServoingNode:
         self.peduncle_center_sub = rospy.Subscriber(
             '/peduncle_center', Point, self.peduncle_center_callback)
 
-        self.pepper_center_sub = rospy.Subscriber(
-            '/pepper_center', Point, self.pepper_center_callback)
+        # self.pepper_center_sub = rospy.Subscriber(
+            # '/pepper_center', Point, self.pepper_center_callback)
 
         # Publish a command velocity
         self.cmd_vel_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=1)
@@ -43,6 +43,8 @@ class VisualServoingNode:
         # calculate the orientation
 
     def peduncle_center_callback(self, data):
+
+        print("peduncle center callback", data.x, data.y, data.z)
         self.actual_x = data.x  # In pixels
         self.actual_y = data.y  # In pixels
         self.actual_z = data.z  # In meters

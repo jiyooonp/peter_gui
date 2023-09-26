@@ -1,36 +1,41 @@
 #!/usr/bin/env python3
 
 import rospy
+import math
 from sensor_msgs.msg import Joy
 from std_msgs.msg import Int16
 from geometry_msgs.msg import Twist
 from xarm_msgs.msg import RobotMsg
 
-import math
+# from xarm.wrapper import XArmAPI
+# from xarm.version import __version__
+
 
 """
 Listen to state message. 
 Depending on state, call the appropriate callback function and run the corresponding planner. 
 """
 
-def send_to_xarm(val):
-    if val > 0.1:
-        return 1
-    elif val < -0.1:
-        return -1
-    else:
-        return 0
-    
+
 class PlannerNode:
     def __init__(self):
+
+        # initialize values
         rospy.init_node('planner_node', anonymous=True)
         self.state = 0
         self.joy_state = Joy()
         self.fake_joy = Joy()
         self.visual_servoing_state = Twist()
 
+        # initialize xarm (not using this rn)
+        # self.arm = XArmAPI(rospy.get_param('robot_ip'))
+        # self.arm.connect()
+        # self.arm.set_mode(0)
+        # self.arm.set_state(0)
+
+        # initial fake joy values
         self.fake_joy.header.frame_id = "/dev/input/js0"
-        self.fake_joy.header.stamp = rospy.Time.now() # Note you need to call rospy.init_node() before this will work
+        self.fake_joy.header.stamp = rospy.Time.now()
         self.fake_joy.axes = [0 for _ in range(0,8)]
         self.fake_joy.buttons = [0 for _ in range(0,11)]
 
@@ -38,16 +43,19 @@ class PlannerNode:
         self.state_sub = rospy.Subscriber('/state', Int16, self.state_callback, queue_size=1) # state message
         self.joystick_sub = rospy.Subscriber('/joy', Joy, self.joystick_callback, queue_size=1) # joystick message        
         self.visual_servoing_sub = rospy.Subscriber('/cmd_vel', Twist, self.visual_servo, queue_size=1) #visual servoing messages
-        # self.empty_message = rospy.Subscriber('/cmd_vel', Twist, self.visual_servo, queue_size=1) #visual servoing messages   
         self.xarm_sub = rospy.Subscriber('/xarm/xarm_states', RobotMsg, self.robot_state_callback, queue_size=1) # joystick message
         
         # publishers
         self.joy_pub = rospy.Publisher('/joy_relay', Joy, queue_size=1) # joystick commands pub
-        self.ee_joy_pub = rospy.Publisher('/ee_joy', Joy, queue_size=1) # forwarding joystick commands to ee 
-        # todo: update ee topic name
 
-        # timer
-        # timer = rospy.Timer(rospy.Duration(1.0), self.timer_callback)
+    def send_to_xarm(self, val):
+        """discretize arm teleop value"""
+        if val > 0.1:
+            return 1
+        elif val < -0.1:
+            return -1
+        else:
+            return 0
 
     def state_callback(self, data):
         """Callback for state message"""
@@ -62,18 +70,21 @@ class PlannerNode:
         """Callback for joystick message"""
         # update joy state
         self.joy_state = data
-    
-    # def timer_callback(self):
-    #     self.joy_pub.publish(self.fake_joy)
+
 
     def visual_servo(self, data):
-        """visual servoing planner"""
-        # convert twist message to a joystick command and then publish the joystick command to the arm and EE
+        """visual servoing planner - convert twist to joy"""
         self.visual_servoing_state = data
 
         self.fake_joy.header.stamp = rospy.Time.now()
         self.fake_joy.axes = [0 for _ in range(0,8)]
         self.fake_joy.buttons = [0 for _ in range(0,11)]
+
+        # cartesian move forward if X is pressed
+        if (self.joy_state.buttons[2] == 1):
+            self.fake_joy.axes[:] = 0
+            self.fake_joy.axes[4] = 0.5 # forward is positive x
+            return
 
         # get the visual servo values
         dy = self.visual_servoing_state.linear.x  # horizontal
@@ -84,23 +95,17 @@ class PlannerNode:
         y =  dy * math.cos(math.radians(45)) + dz * math.cos(math.radians(45))
         z = -dy * math.sin(math.radians(45)) + dz * math.cos(math.radians(45))
 
-       # update the fake joy message to publish
-        self.fake_joy.axes[4] = send_to_xarm(dx)  # forward/back button on joystick
+        # update the fake joy message to publish
+        self.fake_joy.axes[4] = self.send_to_xarm(dx)   # forward/back
+        self.fake_joy.axes[6] = -self.send_to_xarm(y)   # left/right
+        self.fake_joy.axes[7] = -self.send_to_xarm(z)   # up/down
+
         print(f"forward/back: {self.fake_joy.axes[4]}")
-
-        # move left/right
-        self.fake_joy.axes[6] = -send_to_xarm(y)    # left/right
         print(f"left/right: {self.fake_joy.axes[6]}")
-
-        # move up/down
-        self.fake_joy.axes[7] = -send_to_xarm(z)   # up/down
         print(f"up/down: {self.fake_joy.axes[7]}")
 
         return
-    
-    # def check_safety_limits(self):
-    #     """check if the robot is within safety limits"""
-    #     self.ee_pose
+
 
     def run(self):
         """check what state the robot is in and run the corresponding planner"""
@@ -114,13 +119,12 @@ class PlannerNode:
         elif self.state == 1:
             # print("manual teleop state")
             self.joy_pub.publish(self.joy_state) # publish real joy arm
-            self.ee_joy_pub.publish(self.joy_state) # publish to ee
         
         # auto visual servo state
         elif self.state == 2:
             # print("visual servo state")
+            # cartesian move to peduncle
             self.joy_pub.publish(self.fake_joy) # publish fake joy to arm
-            self.ee_joy_pub.publish(self.joy_state) # publish to ee
 
 
 if __name__ == '__main__':

@@ -31,7 +31,7 @@ class StateMachineNode:
         # how many times you receive the same button press
         # self.last_pressed = 0
         # self.button_counter = 0 
-        
+
         # make a service server to be able to change the arm state
         self.xarm_mode_service = rospy.ServiceProxy("/xarm/set_mode", SetInt16)
         self.xarm_state_service = rospy.ServiceProxy("/xarm/set_state", SetInt16)

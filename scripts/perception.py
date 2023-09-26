@@ -205,9 +205,6 @@ class PerceptionNode:
         self.peduncle_center.x = 425 #self.img_width/2
         self.peduncle_center.y = 135# self.img_height/2
         self.peduncle_center.z = 0
-        if self.go_straight:
-            self.peduncle_center.z = 1.5
-            print("going in straight")
 
         self.pepper_marker.points = []
 
@@ -226,7 +223,7 @@ class PerceptionNode:
                 # self.pepper_center.z = 0.001*self.depth_image[self.pepper_center.y,
                 #                                               self.pepper_center.x]
 
-                # self.pepper_center.z = self.get_depth(self.pepper_center.x, self.pepper_center.y)
+                self.pepper_center.z = self.get_depth(self.pepper_center.x, self.pepper_center.y)
 
                 # getting the peduncle depth from pepper depth
                 # self.peduncle_center.z = self.get_depth(self.pepper_center.x, self.pepper_center.y)
@@ -265,14 +262,20 @@ class PerceptionNode:
 
                 self.box_size = (box_peduncle[2] - box_peduncle[0]) * (box_peduncle[3] - box_peduncle[1])
 
-                if self.box_size >5000:
+                if self.box_size > 5000:
                     self.go_straight = True
+
                 # Depth image is a numpy array so switch coordinates
                 # Depth is converted from mm to m
                 # self.peduncle_center.z = 0.001*self.depth_image[self.peduncle_center.y,
                 #                                                 self.peduncle_center.x]
+
                 self.peduncle_center.z = self.get_depth(self.peduncle_center.x, self.peduncle_center.y)
                 # print("depth: ", self.peduncle_center.z)
+                if self.go_straight:
+                    self.peduncle_center.z = 0
+                    print("going in straight")
+
                 X, Y, Z = self.get_3D_coords(
                     self.peduncle_center.x, self.peduncle_center.y, self.peduncle_center.z)
 

@@ -29,7 +29,7 @@ class VisualServoingNode:
 
         # Subscribe to perception poi message
         self.peduncle_center_sub = rospy.Subscriber(
-            '/peduncle_center', Point, self.peduncle_center_callback)
+            '/pepper_center', Point, self.peduncle_center_callback)
 
         # self.pepper_center_sub = rospy.Subscriber(
             # '/pepper_center', Point, self.pepper_center_callback)

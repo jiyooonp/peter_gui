@@ -117,13 +117,13 @@ class PerceptionNode:
         peduncle_count = 0
 
         self.pepper_center = Point()
-        self.pepper_center.x = self.img_width/2
-        self.pepper_center.y = self.img_height/2
+        self.pepper_center.x = 425
+        self.pepper_center.y = 135
         self.pepper_center.z = 0
 
 
         self.peduncle_center = Point()
-        self.peduncle_center.x = 425 #self.img_width/2
+        self.peduncle_center.x = 425 # self.img_width/2
         self.peduncle_center.y = 135 # self.img_height/2
         self.peduncle_center.z = 0
 
@@ -218,8 +218,8 @@ class PerceptionNode:
         # self.peduncle_marker.header.stamp = rospy.Time.now()
         # self.peduncle_marker_publisher.publish(self.peduncle_marker)
 
-        # # self.pepper_center_publisher.publish(self.pepper_center)
-        # self.peduncle_center_publisher.publish(self.peduncle_center)
+        self.pepper_center_publisher.publish(self.pepper_center)
+        self.peduncle_center_publisher.publish(self.peduncle_center)
 
 
         try:

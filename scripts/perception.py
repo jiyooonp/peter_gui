@@ -144,8 +144,8 @@ class PerceptionNode:
         for i, result in enumerate(results_both): # peduncel and pepper
 
             if result.boxes.boxes.size(0) != 0: # if there is a result?
-
-                mask = result.masks[0]
+                # print("mask: ", result.masks)
+                mask = result.masks
                 box = result.boxes[0]  # Boxes object for bbox outputs
                 box_peduncle = box.xyxy[0]
                 cls = box.cls.item()
@@ -155,7 +155,7 @@ class PerceptionNode:
                     pepper_mask = torch.Tensor(mask.segments[0])
                     mask_coords = (pepper_mask.numpy() @ np.array([[self.img_width, 0], [0, self.img_height]])).astype(int)
 
-                    cv2.fillPoly(image, pts=[mask_coords], color=(0, 100, 0, 0.1))
+                    cv2.fillPoly(image, pts=[mask_coords], color=(100, 0, 125, 0.1))
 
                     # These are in RealSense coordinate system
                     self.pepper_center.x = int((box_pepper[0] + box_pepper[2]) / 2)
@@ -175,9 +175,9 @@ class PerceptionNode:
                     self.pepper_marker.header.stamp = rospy.Time.now()
                     self.pepper_marker_publisher.publish(self.pepper_marker)
 
-                else:# it is a peduncle
-
-                    peduncle = PepperPeduncle(i, np.array(mask.data[0].cpu()))
+                else: # it is a peduncle
+                    
+                    peduncle = PepperPeduncle(i, np.array(mask.masks[0].cpu()))
                     poi_x, poi_y = peduncle.set_point_of_interaction()
                     self.peduncle_dict[i] = peduncle
                     

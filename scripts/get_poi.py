@@ -69,6 +69,7 @@ class Curve:
     
     def fit_curve_to_mask(self, mask):
 
+        print("===", mask.shape)
         medial_img, _ = medial_axis(mask, return_distance=True)
 
         x, y = np.where(medial_img == 1)
@@ -173,7 +174,6 @@ class PepperPeduncle:
 
 
     def set_point_of_interaction(self):
-
         self._curve.fit_curve_to_mask(self._mask)
         total_curve_length = self._curve.full_curve_length()
 
@@ -181,3 +181,25 @@ class PepperPeduncle:
         self._poi_px = (poi_x_px, poi_y_px)
 
         return self._poi_px
+
+'''
+Speed: 1.0ms preprocess, 33.6ms inference, 3.0ms postprocess per image at shape (1, 3, 640, 640)
+[ERROR] [1695763655.042531]: bad callback: <bound method PerceptionNode.image_callback of <__main__.PerceptionNode object at 0x7f622e574f10>>
+Traceback (most recent call last):
+  File "/opt/ros/noetic/lib/python3/dist-packages/rospy/topics.py", line 750, in _invoke_callback
+    cb(msg)
+  File "/home/sridevi/Documents/iowa_ws/src/ISU_Demo_Perception/scripts/perception.py", line 105, in image_callback
+    _ = self.run_yolo(cv_image)
+  File "/home/sridevi/Documents/iowa_ws/src/ISU_Demo_Perception/scripts/perception.py", line 181, in run_yolo
+    poi_x, poi_y = peduncle.set_point_of_interaction()
+  File "/home/sridevi/Documents/iowa_ws/src/ISU_Demo_Perception/scripts/get_poi.py", line 178, in set_point_of_interaction
+    self._curve.fit_curve_to_mask(self._mask)
+  File "/home/sridevi/Documents/iowa_ws/src/ISU_Demo_Perception/scripts/get_poi.py", line 73, in fit_curve_to_mask
+    medial_img, _ = medial_axis(mask, return_distance=True)
+  File "/home/sridevi/.local/lib/python3.8/site-packages/skimage/morphology/_skeletonize.py", line 473, in medial_axis
+    corner_score = _table_lookup(masked_image, cornerness_table)
+  File "/home/sridevi/.local/lib/python3.8/site-packages/skimage/morphology/_skeletonize.py", line 551, in _table_lookup
+    if image.shape[0] < 3 or image.shape[1] < 3:
+IndexError: tuple index out of range
+
+'''

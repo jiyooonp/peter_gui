@@ -222,8 +222,9 @@ class PerceptionNode:
 
         for i, result in enumerate(results_both):
 
-            # mask = result.masks
+            mask = result.masks
 
+            if mask: #.masks[0].cpu().numpy().size != 0:
                 peduncle = PepperPeduncle(i, np.array(mask.masks[0].cpu()))
                 poi_x, poi_y = peduncle.set_point_of_interaction()
                 
@@ -236,7 +237,7 @@ class PerceptionNode:
                 # cv2.destroyAllWindows()
 
             # Uncomment this to switch to POI from bounding box
-            # boxes = result.boxes
+                boxes = result.boxes
             # if boxes.xyxy.cpu().numpy().size != 0:
             
                 box_peduncle = boxes.xyxy[0]
@@ -264,8 +265,8 @@ class PerceptionNode:
                 # Depth is converted from mm to m
                 # self.peduncle_center.z = 0.001*self.depth_image[self.peduncle_center.y,
                 #                                                 self.peduncle_center.x]
-                
-                self.peduncle_center.z = self.get_depth(self.peduncle_center.x, self.peduncle_center.y)
+                # print(self.peduncle_center.x, type(self.peduncle_center.x))
+                self.peduncle_center.z = self.get_depth(int(self.peduncle_center.x), int(self.peduncle_center.y))
                 # print("depth: ", self.peduncle_center.z)
                 
                 X, Y, Z = self.get_3D_coords(

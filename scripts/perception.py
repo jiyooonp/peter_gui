@@ -257,44 +257,48 @@ class PerceptionNode:
 
                 peduncle = PepperPeduncle(i, np.array(mask.masks[0].cpu()))
                 poi_x, poi_y = peduncle.set_point_of_interaction()
-                print(poi_x, poi_y)
-
-                image = peduncle.mask
-                # print(image.shape)
-                image = cv2.circle(image, (int(poi_x), int(poi_y)), radius=5, color=0, thickness=-1)
-                cv2.imshow('Image', image)
-                cv2.waitKey(0)
-                cv2.destroyAllWindows()
-                # plt.imshow(image, cmap='gray')
-                # plt.show()
-                # # plt.plot(poi_y, poi_x, 'ro', markersize=2)
                 
+                # Uncomment this for visualizing POI
+                # print(poi_x, poi_y)
+                # image = peduncle.mask
+                # image = cv2.circle(image, (int(poi_y), int(poi_x)), radius=5, color=0, thickness=-1)
+                # cv2.imshow('Image', image)
+                # cv2.waitKey(0)
+                # cv2.destroyAllWindows()
 
-
-
-            boxes = result.boxes
-            if boxes.xyxy.cpu().numpy().size != 0:
+            # Uncomment this to switch to POI from bounding box
+            # boxes = result.boxes
+            # if boxes.xyxy.cpu().numpy().size != 0:
+            
                 box_peduncle = boxes.xyxy[0]
                 box = boxes.xyxy[0]  # only take the first bb
 
                 self.peduncle_center = Point()
 
+            #     # These are in RealSense coordinate system
+            #     self.peduncle_center.x = int((box[0] + box[2]) / 2)
+            #     self.peduncle_center.y = int((box[1] + box[3]) / 2)
+            
+            
                 # These are in RealSense coordinate system
-                self.peduncle_center.x = int((box[0] + box[2]) / 2)
-                self.peduncle_center.y = int((box[1] + box[3]) / 2)
+                self.peduncle_center.x = poi_y
+                self.peduncle_center.y = poi_x
 
                 self.peduncle_box_size_publisher.publish(str(box_peduncle[2] - box_peduncle[0]) + " " + str(box_peduncle[3] - box_peduncle[1]))
 
                 self.box_size = (box_peduncle[2] - box_peduncle[0]) * (box_peduncle[3] - box_peduncle[1])
 
-                if self.box_size >5000:
+                if self.box_size > 5000:
                     self.go_straight = True
+                    
                 # Depth image is a numpy array so switch coordinates
                 # Depth is converted from mm to m
                 # self.peduncle_center.z = 0.001*self.depth_image[self.peduncle_center.y,
                 #                                                 self.peduncle_center.x]
+                
                 self.peduncle_center.z = self.get_depth(self.peduncle_center.x, self.peduncle_center.y)
                 # print("depth: ", self.peduncle_center.z)
+                
                 X, Y, Z = self.get_3D_coords(
                     self.peduncle_center.x, self.peduncle_center.y, self.peduncle_center.z)
 

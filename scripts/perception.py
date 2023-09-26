@@ -128,7 +128,7 @@ class PerceptionNode:
         self.peduncle_center.z = 0
 
         if self.go_straight:
-            self.peduncle_center.z = 1.5
+            self.peduncle_center.z = 0
             print("going in straight")
 
         self.pepper_marker.points = []

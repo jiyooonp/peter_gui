@@ -7,15 +7,11 @@ from std_msgs.msg import Int16
 from geometry_msgs.msg import Twist
 from xarm_msgs.msg import RobotMsg
 
-# from xarm.wrapper import XArmAPI
-# from xarm.version import __version__
-
 
 """
 Listen to state message. 
 Depending on state, call the appropriate callback function and run the corresponding planner. 
 """
-
 
 class PlannerNode:
     def __init__(self):
@@ -27,17 +23,16 @@ class PlannerNode:
         self.fake_joy = Joy()
         self.visual_servoing_state = Twist()
 
-        # initialize xarm (not using this rn)
-        # self.arm = XArmAPI(rospy.get_param('robot_ip'))
-        # self.arm.connect()
-        # self.arm.set_mode(0)
-        # self.arm.set_state(0)
-
         # initial fake joy values
         self.fake_joy.header.frame_id = "/dev/input/js0"
         self.fake_joy.header.stamp = rospy.Time.now()
         self.fake_joy.axes = [0 for _ in range(0,8)]
         self.fake_joy.buttons = [0 for _ in range(0,11)]
+
+        self.joy_state.header.frame_id = "/dev/input/js0"
+        self.joy_state.header.stamp = rospy.Time.now()
+        self.joy_state.axes = [0 for _ in range(0,8)]
+        self.joy_state.buttons = [0 for _ in range(0,11)]
 
         # subscribers
         self.state_sub = rospy.Subscriber('/state', Int16, self.state_callback, queue_size=1) # state message
@@ -82,7 +77,6 @@ class PlannerNode:
 
         # cartesian move forward if X is pressed
         if (self.joy_state.buttons[2] == 1):
-            self.fake_joy.axes[:] = 0
             self.fake_joy.axes[4] = 0.5 # forward is positive x
             return
 
@@ -122,8 +116,13 @@ class PlannerNode:
         
         # auto visual servo state
         elif self.state == 2:
-            # print("visual servo state")
-            # cartesian move to peduncle
+            # self.fake_joy.header.stamp = rospy.Time.now()
+            # self.fake_joy.axes = [0 for _ in range(0,8)]
+            # self.fake_joy.buttons = [0 for _ in range(0,11)]
+            # # cartesian move forward if X is pressed
+            # if (self.joy_state.buttons[2] == 1):
+            #     self.fake_joy.axes = [0 for _ in range(0,8)]
+            #     self.fake_joy.axes[4] = 0.5 # forward is positive x
             self.joy_pub.publish(self.fake_joy) # publish fake joy to arm
 
 

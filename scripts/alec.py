@@ -27,6 +27,81 @@ from get_poi import PepperPeduncle
 roslaunch realsense2_camera rs_aligned_depth.launch  filters:=pointcloud
 """
 
+def publish_plt_image():
+    # Create a ROS publisher for the Image message
+
+    # Create a CV Bridge to convert the NumPy array to a ROS Image message
+    bridge = cv_bridge.CvBridge()
+
+    # Create a simple plot (You can replace this with your actual plotting code)
+    x = [1, 2, 3, 4, 5]
+    y = [10, 8, 6, 4, 2]
+    plt.plot(x, y)
+
+    # Convert the Matplotlib image to a NumPy array
+    plt_image_np = np.frombuffer(
+        plt.gcf().canvas.tostring_rgb(), dtype=np.uint8)
+    plt_image_np = plt_image_np.reshape(
+        plt.gcf().canvas.get_width_height()[::-1] + (3,))
+
+
+def draw_all(img, xywh, mask):
+    plt.imshow(img)
+
+    # Draw Peduncle
+    mask = mask.masks[0]
+    polygon = Polygon(mask)
+    x, y = polygon.exterior.xy
+    plt.fill(x, y, color="blue", alpha=0.5)
+    polygon = Polygon(mask)
+    plt.plot(*polygon.exterior.xy)
+
+    # draw pepper
+    xywh = xywh[0]
+    x = int(xywh[0])
+    y = int(xywh[1])
+    w = int(xywh[2])
+    h = int(xywh[3])
+    draw_bounding_box(0, x, y, w, h)
+
+    # Save the plot to a BytesIO buffer as a PNG image
+    buffer = io.BytesIO()
+    plt.savefig(buffer, format='png')
+    buffer.seek(0)
+
+    # Convert the buffer to a NumPy array
+    buffer_image = np.array(PILImage.open(buffer))
+
+    # Close the plot to free up resources
+    plt.close()
+
+    # Convert the NumPy array to a PIL Image
+    pil_image = PILImage.fromarray(buffer_image)
+
+    # Return the PIL Image
+    return pil_image
+
+
+def draw_bounding_box(confidence, x, y, w, h, color="blue", fill=False):
+    # Get the current reference
+    ax = plt.gca()
+    # plot the bounding box
+    rect = patches.Rectangle((x - w / 2, y - h / 2), w,
+                             h, linewidth=2, edgecolor=color, facecolor='none')
+    # Add the patch to the Axes
+    ax.add_patch(rect)
+
+
+def draw_bounding_polygon(confidence, mask, img_shape, color="blue", fill=True):
+    mask = mask.xy[0]
+    polygon = Polygon(mask)
+    x, y = polygon.exterior.xy
+    if fill:
+        plt.fill(x, y, color=color, alpha=0.7)
+    polygon = Polygon(mask)
+    plt.plot(*polygon.exterior.xy)
+
+
 class PerceptionNode:
     def __init__(self):
         rospy.init_node('perception_node')
@@ -101,6 +176,7 @@ class PerceptionNode:
             # Convert ROS Image message to OpenCV image
             cv_image = self.bridge.imgmsg_to_cv2(
                 msg, desired_encoding='passthrough')
+            # cv2.imshow("Image window", cv_image)
             if cv_image is not None:
                 _ = self.run_yolo(cv_image)
 
@@ -109,12 +185,16 @@ class PerceptionNode:
             return
 
         # Run YOLO on the image
+        # detected_image = self.run_yolo(cv_image)
 
     def run_yolo(self, image):
         results_both = self.yolo(image)
 
         self.peduncle_dict = dict()
         peduncle_count = 0
+        # pil_image = None
+        # xywh = None
+        # mask = None
 
         self.pepper_center = Point()
         self.pepper_center.x = self.img_width/2
@@ -141,59 +221,54 @@ class PerceptionNode:
 
         self.peduncle_marker.points = []
 
+        # print(results_both)
+
         for i, result in enumerate(results_both): # peduncel and pepper
-
             if result.boxes.boxes.size(0) != 0: # if there is a result?
-
+                # for i in range(result.masks.shape[0]):
                 mask = result.masks[0]
                 box = result.boxes[0]  # Boxes object for bbox outputs
                 box_peduncle = box.xyxy[0]
-                cls = box.cls.item()
-                if cls == 0: # it is a green-bell-pepper
-                    box_pepper = result.boxes.xyxy[0]
 
-                    pepper_mask = torch.Tensor(mask.segments[0])
-                    mask_coords = (pepper_mask.numpy() @ np.array([[self.img_width, 0], [0, self.img_height]])).astype(int)
-
-                    cv2.fillPoly(image, pts=[mask_coords], color=(0, 100, 0, 0.1))
-
-                    # These are in RealSense coordinate system
-                    self.pepper_center.x = int((box_pepper[0] + box_pepper[2]) / 2)
-                    self.pepper_center.y = int((box_pepper[1] + box_pepper[3]) / 2)
-
-                    X, Y, Z = self.get_3D_coords(
-                        self.pepper_center.x, self.pepper_center.y, self.pepper_center.z)
-                    
-                    self.pepper_marker.points.append(Point(X, Y, Z))
-
-                    p1 = (int(box_pepper[0]), int(box_pepper[1]))
-                    p2 = (int(box_pepper[2]), int(box_pepper[3]))
-
-                    if self.pepper_marker.points == []:
-                        self.pepper_marker.points.append(Point(0, 0, 0))
-
-                    self.pepper_marker.header.stamp = rospy.Time.now()
-                    self.pepper_marker_publisher.publish(self.pepper_marker)
-
-                else:# it is a peduncle
-
+                if True:
                     peduncle = PepperPeduncle(i, np.array(mask.data[0].cpu()))
                     poi_x, poi_y = peduncle.set_point_of_interaction()
                     self.peduncle_dict[i] = peduncle
                     
+                    # Uncomment this for visualizing POI
+                    # print(poi_x, poi_y)
+                    # image = peduncle.mask
+                    # image = cv2.circle(image, (int(poi_y), int(poi_x)), radius=5, color=0, thickness=-1)
+                    # cv2.imshow('Image', image)
+                    # cv2.waitKey(0)
+                    # cv2.destroyAllWindows()
+
                     box_peduncle = result.boxes.xyxy[0]  # only take the first bb
 
                     self.peduncle_center = Point()
                     
                     # Alec's ws
+                    # convert mask points [0, 1] to image coordinates
+                    # print(mask)
                     peduncle.mask = torch.Tensor(mask.segments[0])
                     mask_coords = (peduncle.mask.numpy() @ np.array([[self.img_width, 0], [0, self.img_height]])).astype(int)
 
                     cv2.fillPoly(image, pts=[mask_coords], color=(0, 0, 255, 0.1))
 
+                    # peduncle.conf = box.conf[i]
+                    # peduncle.xywh = box.xywh[i].cpu().numpy()
+                    # peduncle.mask = torch.Tensor(mask.segments[i]).to_
+
+                #     # These are in RealSense coordinate system
+                #     self.peduncle_center.x = int((box[0] + box[2]) / 2)
+                #     self.peduncle_center.y = int((box[1] + box[3]) / 2)
+                
+                
                     # These are in RealSense coordinate system
                     self.peduncle_center.x = poi_y
                     self.peduncle_center.y = poi_x
+
+                    self.peduncle_box_size_publisher.publish(str(box_peduncle[2] - box_peduncle[0]) + " " + str(box_peduncle[3] - box_peduncle[1]))
 
                     self.box_size = (box_peduncle[2] - box_peduncle[0]) * (box_peduncle[3] - box_peduncle[1])
 
@@ -204,13 +279,55 @@ class PerceptionNode:
                     # Depth is converted from mm to m
                     # self.peduncle_center.z = 0.001*self.depth_image[self.peduncle_center.y,
                     #                                                 self.peduncle_center.x]
+                    # print(self.peduncle_center.x, type(self.peduncle_center.x))
                     self.peduncle_center.z = self.get_depth(int(self.peduncle_center.x), int(self.peduncle_center.y))
+                    # print("depth: ", self.peduncle_center.z)
                     
                     X, Y, Z = self.get_3D_coords(
                         self.peduncle_center.x, self.peduncle_center.y, self.peduncle_center.z)
 
                     self.peduncle_marker.points.append(Point(X, Y, Z))
 
+                    p3 = (int(box_peduncle[0]), int(box_peduncle[1]))
+                    p4 = (int(box_peduncle[2]), int(box_peduncle[3]))
+                    cv2.rectangle(image, p3, p4, (255, 0, 0), 10)
+
+        if self.peduncle_marker.points == []:
+            self.peduncle_marker.points.append(Point(0, 0, 0))
+            
+            # if boxes.xyxy.cpu().numpy().size != 0:
+                
+            #     print("result: ", result)
+
+            #     box_peduncle = boxes.xyxy[0]
+            #     box = boxes.xyxy[0]  # only take the first bb
+
+            #     self.peduncle_center = Point()
+
+            #     # These are in RealSense coordinate system
+            #     self.peduncle_center.x = int((box[0] + box[2]) / 2)
+            #     self.peduncle_center.y = int((box[1] + box[3]) / 2)
+
+            #     self.peduncle_box_size_publisher.publish(str(box_peduncle[2] - box_peduncle[0]) + " " + str(box_peduncle[3] - box_peduncle[1]))
+
+            #     self.box_size = (box_peduncle[2] - box_peduncle[0]) * (box_peduncle[3] - box_peduncle[1])
+
+            #     if self.box_size >5000:
+            #         self.go_straight = True
+            #     # Depth image is a numpy array so switch coordinates
+            #     # Depth is converted from mm to m
+            #     # self.peduncle_center.z = 0.001*self.depth_image[self.peduncle_center.y,
+            #     #                                                 self.peduncle_center.x]
+            #     self.peduncle_center.z = self.get_depth(self.peduncle_center.x, self.peduncle_center.y)
+            #     # print("depth: ", self.peduncle_center.z)
+            #     X, Y, Z = self.get_3D_coords(
+            #         self.peduncle_center.x, self.peduncle_center.y, self.peduncle_center.z)
+
+            #     self.peduncle_marker.points.append(Point(X, Y, Z))
+
+            #     p3 = (int(box_peduncle[0]), int(box_peduncle[1]))
+            #     p4 = (int(box_peduncle[2]), int(box_peduncle[3]))
+            #     cv2.rectangle(image, p3, p4, (255, 0, 0), 10)
 
         # if self.peduncle_marker.points == []:
         #     self.peduncle_marker.points.append(Point(0, 0, 0))
@@ -231,6 +348,16 @@ class PerceptionNode:
             rospy.logerr(
                 "Error converting back to image message: {}".format(e))
             return
+
+        # pil_image = draw_all(image, xywh, mask)
+        # np_image = np.array(pil_image)
+
+        # # Convert BGR image to RGB (OpenCV uses BGR by default)
+        # rgb_image = np_image
+        # # Display the image using cv2.imshow()
+        # cv2.imshow('Image', rgb_image)
+        # cv2.waitKey(0)
+        # cv2.destroyAllWindows()
 
         return image
 
@@ -283,5 +410,18 @@ if __name__ == '__main__':
 
 
 
+'''''''''
+[ERROR] [1695760745.430541]: bad callback: <bound method PerceptionNode.image_callback of <__main__.PerceptionNode object at 0x7f8bd584dd60>>
+Traceback (most recent call last):
+  File "/opt/ros/noetic/lib/python3/dist-packages/rospy/topics.py", line 750, in _invoke_callback
+    cb(msg)
+  File "/root/catkin_ws/src/ISU_Demo/scripts/alec.py", line 181, in image_callback
+    _ = self.run_yolo(cv_image)
+  File "/root/catkin_ws/src/ISU_Demo/scripts/alec.py", line 254, in run_yolo
+    mask_coords = (peduncle.mask @ np.array([[self.img_height, 0], [0, self.img_width]])).astype(int)
+AttributeError: 'Tensor' object has no attribute 'astype'
 
-# names: {0: 'bell-pepper-green', 1: 'bell-pepper-peduncle'}
+
+
+
+'''

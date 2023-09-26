@@ -47,27 +47,29 @@ class Curve:
 
     def parabola(self, t, a, b, c):
         return a * t ** 2 + b * t + c
-
-
-    def get_segment_from_mask(self, mask, img_shape):
-
-        points = []
-        for i in range(len(mask)):
-            points.append(img_shape[1]*mask[i, 0])
-            points.append(img_shape[0]*mask[i, 1])
-
-        img = Image.new('L', (img_shape[1], img_shape[0]), 0)
-        ImageDraw.Draw(img).polygon(points, outline=1, fill=1)
-        segment = np.array(img)
-
-        return segment
+    
+    
+    def curve_length_derivative(self, t):
+        return (1 + (2*self._params[0]*t + self._params[1])**2)**0.5
     
 
-    def fit_curve_to_mask(self, mask, img_shape):
+    def curve_length(self, idx):
+        if self._parabola_direction == 'vertical':
+            return abs(quad(self.curve_length_derivative, self._curve_y[0], self._curve_y[idx])[0])
+        else:
+            return abs(quad(self.curve_length_derivative, self._curve_x[0], self._curve_x[idx])[0])
+        
 
-        segment = self.get_segment_from_mask(mask, img_shape)
+    def full_curve_length(self):
+        if self._parabola_direction == 'vertical':
+            return abs(quad(self.curve_length_derivative, self._curve_y[0], self._curve_y[-1])[0])
+        else:
+            return abs(quad(self.curve_length_derivative, self._curve_x[0], self._curve_x[-1])[0])
 
-        medial_img, _ = medial_axis(segment, return_distance=True)
+    
+    def fit_curve_to_mask(self, mask):
+
+        medial_img, _ = medial_axis(mask, return_distance=True)
 
         x, y = np.where(medial_img == 1)
         
@@ -101,14 +103,6 @@ class Curve:
             
             self._curve_x = sorted_x
             self._curve_y = self.parabola(sorted_x, self._params[0], self._params[1], self._params[2])
-
-        
-    def full_curve_length(self):
-        if self._parabola_direction == 'vertical':
-            return abs(quad(self.curve_length_derivative, self._curve_y[0], self._curve_y[-1])[0])
-        else:
-            return abs(quad(self.curve_length_derivative, self._curve_x[0], self._curve_x[-1])[0])
-
 
 
 class PepperPeduncle:
@@ -178,9 +172,9 @@ class PepperPeduncle:
         return self._curve.curve_x[len(self._curve.curve_y) // 2], self._curve.curve_y[len(self._curve.curve_y) // 2]
 
 
-    def set_point_of_interaction(self, img_shape):
+    def set_point_of_interaction(self):
 
-        self._curve.fit_curve_to_mask(self._mask, img_shape)
+        self._curve.fit_curve_to_mask(self._mask)
         total_curve_length = self._curve.full_curve_length()
 
         poi_x_px, poi_y_px = self.determine_poi(total_curve_length)

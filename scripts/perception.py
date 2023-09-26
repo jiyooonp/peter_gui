@@ -19,6 +19,7 @@ from geometry_msgs.msg import Point
 from visualization_msgs.msg import Marker
 from sensor_msgs.msg import CameraInfo
 from std_msgs.msg import String
+from get_poi import PepperPeduncle
 
 
 
@@ -248,8 +249,29 @@ class PerceptionNode:
 
         self.peduncle_marker.points = []
 
-        for result in results_peduncle:
+        for i, result in enumerate(results_peduncle):
             mask = result.masks
+
+            if mask:
+                # print(mask)
+
+                peduncle = PepperPeduncle(i, np.array(mask.masks[0].cpu()))
+                poi_x, poi_y = peduncle.set_point_of_interaction()
+                print(poi_x, poi_y)
+
+                image = peduncle.mask
+                # print(image.shape)
+                image = cv2.circle(image, (int(poi_x), int(poi_y)), radius=5, color=0, thickness=-1)
+                cv2.imshow('Image', image)
+                cv2.waitKey(0)
+                cv2.destroyAllWindows()
+                # plt.imshow(image, cmap='gray')
+                # plt.show()
+                # # plt.plot(poi_y, poi_x, 'ro', markersize=2)
+                
+
+
+
             boxes = result.boxes
             if boxes.xyxy.cpu().numpy().size != 0:
                 box_peduncle = boxes.xyxy[0]

@@ -1,0 +1,38 @@
+<launch>
+
+  <!-- params -->
+  <arg name="robot_ip" default="192.168.1.214"/>
+  <arg name="joy_dev" default="/dev/input/js0" />
+  <arg name="joystick" default="true" />
+
+  <!--joystick node-->
+  <node name="joystick_node" pkg="joy" type="joy_node"></node>
+
+  <!-- xarm launch -->
+  <include file="$(find xarm_bringup)/launch/xarm6_server.launch">
+      <arg name="robot_ip" value="$(arg robot_ip)"/>
+  </include>
+
+  <!-- xarm teleop -->
+  <node pkg="amiga_xarm"  name="xarm_joystick_control" type="xarm_joystick_test"></node>
+
+  <!-- launch realsense rs_aligned_depth.launch -->
+  <include file="$(find realsense2_camera)/launch/rs_aligned_depth.launch"></include>
+  
+  <!-- state machine node-->
+  <node pkg="perception_refactor"  name="state_machine_node" type="state_machine_node.py"></node>
+
+  <!-- planner node-->
+  <node pkg="perception_refactor"  name="planner_node" type="planner_node.py"></node>
+
+  <!-- perception node-->
+  <node pkg="perception_refactor"  name="perception_node" type="perception.py"></node>
+
+  <!-- visual servo node-->
+  <node pkg="perception_refactor"  name="visual_servo_node" type="visual_servo_node.py"></node>
+
+  <!-- ee node-->
+  <!-- <node pkg="perception_refactor"  name="ee_node" type="ee_node.py"></node> -->
+
+  
+</launch>

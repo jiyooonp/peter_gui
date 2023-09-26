@@ -24,8 +24,6 @@ class EENode:
             return
 
 
-
-
         # if LB button is pressed open gripper and cutter service
         if self.joy_state.buttons[4] == 1:
             rospy.wait_for_service('/gripper_service')

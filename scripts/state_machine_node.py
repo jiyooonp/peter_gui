@@ -5,7 +5,7 @@ import rospy
 from sensor_msgs.msg import Joy
 from std_msgs.msg import Int16
 
-from xarm_msgs.srv import SetInt16, SetInt16Response 
+from xarm_msgs.srv import SetInt16, SetInt16Response
 
 """
 Possible states:
@@ -71,8 +71,8 @@ class StateMachineNode:
             self.state = 2
             rospy.loginfo("Enter VS Mode")
             
-        # triple line -> enter idle mode
-        elif self.joy_state[7] and self.state != 0:
+        # Y -> enter idle mode
+        elif self.joy_state[3] and self.state != 0:
             self.state = 0
             rospy.loginfo("Enter Idle Mode")                
         

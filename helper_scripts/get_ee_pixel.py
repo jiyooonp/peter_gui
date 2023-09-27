@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import rospy
 import cv2
@@ -14,14 +14,16 @@ def image_callback(msg):
     global image
     bridge = CvBridge()
     image = bridge.imgmsg_to_cv2(msg, desired_encoding="passthrough")
-    plt.imshow(image)
-    plt.axis('off')  # Turn off axis labels and ticks (optional)
-    plt.show()
+    
 
 def main():
     rospy.init_node("pixel_picker")
     image_topic = "/camera/color/image_raw"  # Change this to the actual image topic name
     rospy.Subscriber(image_topic, Image, image_callback)
+    rospy.sleep(5)
+    
+    plt.imshow(image)
+    plt.show()
     rospy.spin()
 
 

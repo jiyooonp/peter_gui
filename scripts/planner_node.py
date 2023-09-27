@@ -78,7 +78,7 @@ class PlannerNode:
         # cartesian move forward if X is pressed
         if (self.joy_state.buttons[2] == 1):
             self.fake_joy.axes[4] = 1 # forward is positive x
-            
+            # self.fake_joy.axes[4] = 1 # forward is positive x
             return
 
         # get the visual servo values
@@ -93,7 +93,7 @@ class PlannerNode:
         # update the fake joy message to publish
         self.fake_joy.axes[4] = self.send_to_xarm(dx)   # forward/back
         self.fake_joy.axes[6] = -self.send_to_xarm(y)   # left/right
-        self.fake_joy.axes[7] = -self.send_to_xarm(z)   # up/down
+        self.fake_joy.axes[7] = self.send_to_xarm(z)   # up/down
 
         print(f"forward/back: {self.fake_joy.axes[4]}")
         print(f"left/right: {self.fake_joy.axes[6]}")

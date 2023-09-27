@@ -8,24 +8,24 @@ class VisualServoingNode:
     def __init__(self):
 
         rospy.init_node('visual_servoing_node', anonymous=True)
-        self.rate = rospy.Rate(1)
+        self.rate = rospy.Rate(30)
 
         # RealSense image dimensions
         self.image_width = 640.0
         self.image_height = 480.0
 
-        # Set target x and y pixels (numpy coordinate system)
-        self.target_x = 425 # self.image_width/2 # 
-        self.target_y = 135 #self.image_height/2 #  #380
+        # Set target x and y pixels (RealSense coordinate system)
+        self.target_x = self.image_width/2  # 425
+        self.target_y = self.image_height/2 # 135
 
         # Set control gains
-        self.k_x = 1
-        self.k_y = 1
+        self.k_x = 2
+        self.k_y = 2
         self.k_z = 1
 
         # pepper center and peduncle center
-        self.pepper_center = [425, 135, 0]
-        self.peduncle_center = [425, 135, 0]
+        self.pepper_center = [self.target_x, self.target_y, 0]
+        self.peduncle_center = [self.target_x, self.target_y, 0]
 
         # Subscribe to perception poi message
         self.peduncle_center_sub = rospy.Subscriber(
@@ -70,8 +70,8 @@ class VisualServoingNode:
 
         # Visual servoing control law (velocities set according to RealSense frame)
         vel_cmd = Twist()
-        vel_cmd.linear.x = self.k_x * target_error_x
-        vel_cmd.linear.y = self.k_y * target_error_y
+        vel_cmd.linear.x = max(min(self.k_x * target_error_x, 1), -1)
+        vel_cmd.linear.y = max(min(self.k_y * target_error_y, 1), -1)
         vel_cmd.linear.z = max(min(self.k_z * actual_location[2], 1), -1)
 
         # Publish velocity

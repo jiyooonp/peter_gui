@@ -150,6 +150,8 @@ class PerceptionNode:
                     self.peduncle_offset = int((box[3] - box[1]) / 3)
                     self.pepper_center.y -= self.peduncle_offset
 
+                    self.pepper_center.z = self.get_depth(int(self.pepper_center.x), int(self.pepper_center.y))
+
                     X, Y, Z = self.get_3D_coords(
                         self.pepper_center.x, self.pepper_center.y, self.pepper_center.z)
 

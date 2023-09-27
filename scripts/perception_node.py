@@ -29,7 +29,7 @@ roslaunch realsense2_camera rs_aligned_depth.launch  filters:=pointcloud
 
 class PerceptionNode:
     def __init__(self):
-        rospy.init_node('perception_node')
+        rospy.init_node('perception_node', anonymous=True)
         self.bridge = CvBridge()
         self.depth_window = 2  # 5 x 5 window (i-2 to i+2)
         self.camera_matrix = None

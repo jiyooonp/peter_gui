@@ -62,6 +62,7 @@ class StateMachineNode:
         # if self.button_counter > 10:
             
         #  double square -> manual teleop
+        # if (self.joy_state[6] or self.joy_state[2]) and self.state != 1:
         if self.joy_state[6] and self.state != 1:
             self.state = 1
             rospy.loginfo("Enter Manual Mode")

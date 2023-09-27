@@ -77,7 +77,8 @@ class PlannerNode:
 
         # cartesian move forward if X is pressed
         if (self.joy_state.buttons[2] == 1):
-            self.fake_joy.axes[4] = 0.5 # forward is positive x
+            self.fake_joy.axes[4] = 1 # forward is positive x
+            
             return
 
         # get the visual servo values

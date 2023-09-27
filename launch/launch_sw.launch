@@ -1,24 +1,21 @@
 <launch>
 
-  <!-- params -->
-  <arg name="robot_ip" default="192.168.1.214"/>
-
-  <!-- launch realsense rs_aligned_depth.launch -->
+  <!-- realsense -->
   <include file="$(find realsense2_camera)/launch/rs_aligned_depth.launch"></include>
-  
+
   <!-- state machine node-->
   <node pkg="perception_refactor"  name="state_machine_node" type="state_machine_node.py"></node>
 
   <!-- planner node-->
   <node pkg="perception_refactor"  name="planner_node" type="planner_node.py"></node>
 
-  <!-- perception node-->
-  <node pkg="perception_refactor"  name="perception_node" type="perception.py"></node>
-
   <!-- visual servo node-->
   <node pkg="perception_refactor"  name="visual_servo_node" type="visual_servo_node.py"></node>
 
   <!-- ee node-->
-  <!-- <node pkg="perception_refactor"  name="ee_node" type="ee_node.py"></node> -->
-  
+  <node pkg="perception_refactor"  name="ee_node" type="ee_node.py"></node>
+
+  <!-- perception node-->
+  <node pkg="perception_refactor"  name="perception_node" type="perception_node.py"></node>
+
 </launch>

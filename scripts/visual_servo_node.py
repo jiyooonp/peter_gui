@@ -62,7 +62,6 @@ class VisualServoingNode:
         # Calculate error between poi and image center
         target_error_x = self.target_x - actual_location[0]
         target_error_y = self.target_y - actual_location[1]
-        # print(target_error_x, target_error_y, self.actual_z)
 
         # Normalize errors
         target_error_x = target_error_x/self.image_width

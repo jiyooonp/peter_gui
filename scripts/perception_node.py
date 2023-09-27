@@ -37,13 +37,11 @@ class PerceptionNode:
         self.img_height = None
 
         curr_path = os.getcwd()
-        print(curr_path)
 
         # Define the YOLO model
         rospack = rospkg.RosPack()
         package_name = 'perception_refactor'
         package_path = rospack.get_path(package_name)
-        print(package_path)
 
         self.yolo = YOLO(
             package_path+'/weights/iowa_train_3.pt')
@@ -95,6 +93,10 @@ class PerceptionNode:
         self.depth_image = None
 
         self.peduncle_offset = 0.0       
+        
+        self.detection_void_count = 0
+        self.last_peduncle_center = Point()
+        self.last_pepper_center = Point()
 
     def image_callback(self, msg):
         try:
@@ -111,6 +113,7 @@ class PerceptionNode:
         # Run YOLO on the image
 
     def run_yolo(self, image):
+
         results_both = self.yolo(image)
 
         self.peduncle_dict = dict()
@@ -119,12 +122,12 @@ class PerceptionNode:
         self.pepper_center = Point()
         self.pepper_center.x = -1 # Assume there are no detections initially
         self.pepper_center.y = -1
-        self.pepper_center.z = -1
+        self.pepper_center.z = 0
 
         self.peduncle_center = Point()
         self.peduncle_center.x = -1 # self.img_width/2
         self.peduncle_center.y = -1 # self.img_height/2
-        self.peduncle_center.z = -1
+        self.peduncle_center.z = 0
 
         self.pepper_marker.points = []
         self.peduncle_marker.points = []
@@ -136,8 +139,8 @@ class PerceptionNode:
             for i in range(result.masks.masks.size(0)): # for each mask
                 segment = result.masks.segments[i] # only boundary of mask
                 mask = result.masks.masks[i]       # mask with 1s and 0s
-                box = result.boxes.boxes[i]  
-                cls = result.boxes.cls[i]
+                box = result.boxes.xyxy[i]  
+                cls = result.boxes.cls[i] # 0 is pepper, 1 is peduncle
 
                 if cls == 0: # it is a pepper
                     mask_coords = (segment @ np.array([[self.img_width, 0], [0, self.img_height]])).astype(int)
@@ -152,12 +155,15 @@ class PerceptionNode:
 
                     self.pepper_center.z = self.get_depth(int(self.pepper_center.x), int(self.pepper_center.y))
 
+                    # X, Y, Z in RS frame
                     X, Y, Z = self.get_3D_coords(
                         self.pepper_center.x, self.pepper_center.y, self.pepper_center.z)
 
                     self.pepper_marker.points.append(Point(X, Y, Z))
                     self.pepper_marker.header.stamp = rospy.Time.now()
                     self.pepper_marker_publisher.publish(self.pepper_marker)
+
+                    self.last_pepper_center = self.pepper_center
 
                 else: # it is a peduncle
                     peduncle = PepperPeduncle(i, np.array(mask.cpu()))
@@ -166,16 +172,16 @@ class PerceptionNode:
                     self.peduncle_dict[peduncle_count] = peduncle
                     peduncle_count += 1
                                         
-                    # Alec's ws
                     mask_coords = (segment @ np.array([[self.img_width, 0], [0, self.img_height]])).astype(int)
                     image = cv2.fillPoly(image, pts=[mask_coords], color=(0, 0, 255, 0.1))
 
                     # These are in RealSense coordinate system
                     self.peduncle_center.x = poi_y
                     self.peduncle_center.y = poi_x
-                                                        
+
                     self.peduncle_center.z = self.get_depth(int(self.peduncle_center.x), int(self.peduncle_center.y))
                     
+                    # RS frame
                     X, Y, Z = self.get_3D_coords(
                         self.peduncle_center.x, self.peduncle_center.y, self.peduncle_center.z)
 
@@ -184,9 +190,17 @@ class PerceptionNode:
                     self.peduncle_marker_publisher.publish(self.peduncle_marker)
 
                     self.box_size = (box[2] - box[0]) * (box[3] - box[1])
+
+                    self.last_peduncle_center = self.peduncle_center
+
                     if self.box_size > 5000:
                         self.go_straight = True
-
+        else:
+            self.detection_void_count += 1
+            if self.detection_void_count > 10:
+                self.peduncle_center = self.last_peduncle_center
+                self.pepper_center = self.last_pepper_center
+                self.detection_void_count = 0
 
         self.pepper_center_publisher.publish(self.pepper_center)
         self.peduncle_center_publisher.publish(self.peduncle_center)
@@ -237,7 +251,7 @@ class PerceptionNode:
         self.camera_info_sub.unregister()
 
     def get_3D_coords(self, x, y, z):
-        # Get the 3D coordinates of the pixel
+        # Get the 3D coordinates of the pixel in the RS frame?TODO
         Z = z
         X = (x - self.camera_matrix[0, 2]) * Z / self.camera_matrix[0, 0]
         Y = (y - self.camera_matrix[1, 2]) * Z / self.camera_matrix[1, 1]

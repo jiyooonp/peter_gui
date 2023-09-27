@@ -69,7 +69,6 @@ class Curve:
     
     def fit_curve_to_mask(self, mask):
 
-        print("===", mask.shape)
         medial_img, _ = medial_axis(mask, return_distance=True)
 
         x, y = np.where(medial_img == 1)

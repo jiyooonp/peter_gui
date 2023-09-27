@@ -197,10 +197,14 @@ class PerceptionNode:
                         self.go_straight = True
         else:
             self.detection_void_count += 1
-            if self.detection_void_count > 10:
-                self.peduncle_center = self.last_peduncle_center
-                self.pepper_center = self.last_pepper_center
+            print("no detection!!")
+            if self.detection_void_count > 100:
+                self.peduncle_center.x = self.last_peduncle_center.x
+                self.peduncle_center.y = 240
+                self.pepper_center.x = self.last_pepper_center.x
+                self.pepper_center.y = 240
                 self.detection_void_count = 0
+                print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n\nn\n\n\n\nn\n\n\n\n\nn\n\n\n\nn\n\nn\n\n\nn\n")
 
         self.pepper_center_publisher.publish(self.pepper_center)
         self.peduncle_center_publisher.publish(self.peduncle_center)

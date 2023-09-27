@@ -40,7 +40,7 @@ class VisualServoingNode:
 
     def pepper_center_callback(self, data):
         self.pepper_center = [data.x, data.y, data.z]
-        print(":pepper:", self.peduncle_center)
+        print(":pepper:", self.pepper_center)
        
 
     def peduncle_center_callback(self, data):
@@ -52,10 +52,10 @@ class VisualServoingNode:
 
         # Get actual location of poi
         # No detections of both pepper and peduncle so don't move
-        if self.peduncle_center == [-1, -1, -1] and self.pepper_center == [-1, -1, -1]:
+        if self.peduncle_center == [-1, -1, 0] and self.pepper_center == [-1, -1, 0]:
             actual_location = [self.target_x, self.target_y, 0]
         # Peduncle detected so move to peduncle
-        elif self.peduncle_center != [-1, -1, -1]:
+        elif self.peduncle_center != [-1, -1, 0]:
             actual_location = self.peduncle_center
         # Only pepper detected so move to pepper
         else:

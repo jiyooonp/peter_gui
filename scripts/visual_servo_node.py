@@ -8,7 +8,7 @@ class VisualServoingNode:
     def __init__(self):
 
         rospy.init_node('visual_servoing_node', anonymous=True)
-        self.rate = rospy.Rate(30)
+        self.rate = rospy.Rate(1)
 
         # RealSense image dimensions
         self.image_width = 640.0
@@ -16,7 +16,7 @@ class VisualServoingNode:
 
         # Set target x and y pixels (numpy coordinate system)
         self.target_x = 425 # self.image_width/2 # 
-        self.target_y =  135 #self.image_height/2 #  #380
+        self.target_y = 135 #self.image_height/2 #  #380
 
         # Set control gains
         self.k_x = 1
@@ -24,36 +24,44 @@ class VisualServoingNode:
         self.k_z = 1
 
         # pepper center and peduncle center
-        self.pepper_center = [0, 0, 0]
-        self.peduncle_center = [0, 0, 0]
+        self.pepper_center = [425, 135, 0]
+        self.peduncle_center = [425, 135, 0]
 
         # Subscribe to perception poi message
         self.peduncle_center_sub = rospy.Subscriber(
-            '/pepper_center', Point, self.peduncle_center_callback)
+            '/peduncle_center', Point, self.peduncle_center_callback)
 
-        # self.pepper_center_sub = rospy.Subscriber(
-            # '/pepper_center', Point, self.pepper_center_callback)
+        self.pepper_center_sub = rospy.Subscriber(
+            '/pepper_center', Point, self.pepper_center_callback)
 
         # Publish a command velocity
         self.cmd_vel_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=1)
 
+
     def pepper_center_callback(self, data):
         self.pepper_center = [data.x, data.y, data.z]
-
-        # calculate the orientation
+       
 
     def peduncle_center_callback(self, data):
+        self.peduncle_center = [data.x, data.y, data.z]
+        
 
-        print("peduncle center callback", data.x, data.y, data.z)
-        self.actual_x = data.x  # In pixels
-        self.actual_y = data.y  # In pixels
-        self.actual_z = data.z  # In meters
+    def publish_velocity(self):
 
-        self.peduncle_center = [self.actual_x, self.actual_y, self.actual_z]
-
+        # Get actual location of poi
+        # No detections of both pepper and peduncle so don't move
+        if self.peduncle_center == [-1, -1, -1] and self.pepper_center == [-1, -1, -1]:
+            actual_location = [self.target_x, self.target_y, 0]
+        # Peduncle detected so move to peduncle
+        elif self.peduncle_center != [-1, -1, -1]:
+            actual_location = self.peduncle_center
+        # Only pepper detected so move to pepper
+        else:
+            actual_location = self.pepper_center
+        
         # Calculate error between poi and image center
-        target_error_x = self.target_x - self.actual_x
-        target_error_y = self.target_y - self.actual_y
+        target_error_x = self.target_x - actual_location[0]
+        target_error_y = self.target_y - actual_location[1]
         # print(target_error_x, target_error_y, self.actual_z)
 
         # Normalize errors
@@ -64,13 +72,16 @@ class VisualServoingNode:
         vel_cmd = Twist()
         vel_cmd.linear.x = self.k_x * target_error_x
         vel_cmd.linear.y = self.k_y * target_error_y
-        vel_cmd.linear.z = max(min(self.k_z * self.actual_z, 1), -1)
+        vel_cmd.linear.z = max(min(self.k_z * actual_location[2], 1), -1)
 
         # Publish velocity
+        print(f"vel_cmd: {vel_cmd}")
         self.cmd_vel_pub.publish(vel_cmd)
+
 
     def run(self):
         while not rospy.is_shutdown():
+            self.publish_velocity()
             self.rate.sleep()
 
 

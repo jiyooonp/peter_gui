@@ -94,7 +94,7 @@ class PerceptionNode:
         self.peduncle_center = None
         self.depth_image = None
 
-        self.peduncle_center = [0, 0, 0]
+        self.peduncle_offset = 0.0       
 
     def image_callback(self, msg):
         try:
@@ -117,106 +117,74 @@ class PerceptionNode:
         peduncle_count = 0
 
         self.pepper_center = Point()
-        self.pepper_center.x = 425
-        self.pepper_center.y = 135
-        self.pepper_center.z = 0
-
+        self.pepper_center.x = -1 # Assume there are no detections initially
+        self.pepper_center.y = -1
+        self.pepper_center.z = -1
 
         self.peduncle_center = Point()
-        self.peduncle_center.x = 425 # self.img_width/2
-        self.peduncle_center.y = 135 # self.img_height/2
-        self.peduncle_center.z = 0
-
-        if self.go_straight:
-            self.peduncle_center.z = 0
-            print("going in straight")
+        self.peduncle_center.x = -1 # self.img_width/2
+        self.peduncle_center.y = -1 # self.img_height/2
+        self.peduncle_center.z = -1
 
         self.pepper_marker.points = []
-
-        if self.pepper_marker.points == []:
-            self.pepper_marker.points.append(Point(0, 0, 0))
-
-        self.pepper_marker.header.stamp = rospy.Time.now()
-        self.pepper_marker_publisher.publish(self.pepper_marker)
-
         self.peduncle_marker.points = []
 
-        for i, result in enumerate(results_both): # peduncel and pepper
+        result = results_both[0] # only take the first image because there is only one image
 
-            if result.boxes.boxes.size(0) != 0: # if there is a result?
-                # print("mask: ", result.masks)
-                mask = result.masks
-                box = result.boxes[0]  # Boxes object for bbox outputs
-                box_peduncle = box.xyxy[0]
-                cls = box.cls.item()
-                if cls == 0: # it is a green-bell-pepper
-                    box_pepper = result.boxes.xyxy[0]
+        if result.boxes.boxes.size(0) != 0: # if there is a detection
 
-                    pepper_mask = torch.Tensor(mask.segments[0])
-                    mask_coords = (pepper_mask.numpy() @ np.array([[self.img_width, 0], [0, self.img_height]])).astype(int)
+            for i in range(result.masks.masks.size(0)): # for each mask
+                segment = result.masks.segments[i] # only boundary of mask
+                mask = result.masks.masks[i]       # mask with 1s and 0s
+                box = result.boxes.boxes[i]  
+                cls = result.boxes.cls[i]
 
-                    cv2.fillPoly(image, pts=[mask_coords], color=(100, 0, 125, 0.1))
+                if cls == 0: # it is a pepper
+                    mask_coords = (segment @ np.array([[self.img_width, 0], [0, self.img_height]])).astype(int)
+                    image = cv2.fillPoly(image, pts=[mask_coords], color=(100, 0, 125, 0.1))
 
                     # These are in RealSense coordinate system
-                    self.pepper_center.x = int((box_pepper[0] + box_pepper[2]) / 2)
-                    self.pepper_center.y = int((box_pepper[1] + box_pepper[3]) / 2)
+                    self.pepper_center.x = int((box[0] + box[2]) / 2)
+                    self.pepper_center.y = int((box[1] + box[3]) / 2)
+
+                    self.peduncle_offset = int((box[3] - box[1]) / 3)
+                    self.pepper_center.y -= self.peduncle_offset
 
                     X, Y, Z = self.get_3D_coords(
                         self.pepper_center.x, self.pepper_center.y, self.pepper_center.z)
-                    
+
                     self.pepper_marker.points.append(Point(X, Y, Z))
-
-                    p1 = (int(box_pepper[0]), int(box_pepper[1]))
-                    p2 = (int(box_pepper[2]), int(box_pepper[3]))
-
-                    if self.pepper_marker.points == []:
-                        self.pepper_marker.points.append(Point(0, 0, 0))
-
                     self.pepper_marker.header.stamp = rospy.Time.now()
                     self.pepper_marker_publisher.publish(self.pepper_marker)
 
                 else: # it is a peduncle
-                    
-                    peduncle = PepperPeduncle(i, np.array(mask.masks[0].cpu()))
+                    peduncle = PepperPeduncle(i, np.array(mask.cpu()))
                     poi_x, poi_y = peduncle.set_point_of_interaction()
-                    self.peduncle_dict[i] = peduncle
-                    
-                    box_peduncle = result.boxes.xyxy[0]  # only take the first bb
 
-                    self.peduncle_center = Point()
-                    
+                    self.peduncle_dict[peduncle_count] = peduncle
+                    peduncle_count += 1
+                                        
                     # Alec's ws
-                    peduncle.mask = torch.Tensor(mask.segments[0])
-                    mask_coords = (peduncle.mask.numpy() @ np.array([[self.img_width, 0], [0, self.img_height]])).astype(int)
-
-                    cv2.fillPoly(image, pts=[mask_coords], color=(0, 0, 255, 0.1))
+                    mask_coords = (segment @ np.array([[self.img_width, 0], [0, self.img_height]])).astype(int)
+                    image = cv2.fillPoly(image, pts=[mask_coords], color=(0, 0, 255, 0.1))
 
                     # These are in RealSense coordinate system
                     self.peduncle_center.x = poi_y
                     self.peduncle_center.y = poi_x
-
-                    self.box_size = (box_peduncle[2] - box_peduncle[0]) * (box_peduncle[3] - box_peduncle[1])
-
-                    if self.box_size > 5000:
-                        self.go_straight = True
-                        
-                    # Depth image is a numpy array so switch coordinates
-                    # Depth is converted from mm to m
-                    # self.peduncle_center.z = 0.001*self.depth_image[self.peduncle_center.y,
-                    #                                                 self.peduncle_center.x]
+                                                        
                     self.peduncle_center.z = self.get_depth(int(self.peduncle_center.x), int(self.peduncle_center.y))
                     
                     X, Y, Z = self.get_3D_coords(
                         self.peduncle_center.x, self.peduncle_center.y, self.peduncle_center.z)
 
                     self.peduncle_marker.points.append(Point(X, Y, Z))
+                    self.peduncle_marker.header.stamp = rospy.Time.now()
+                    self.peduncle_marker_publisher.publish(self.peduncle_marker)
 
+                    self.box_size = (box[2] - box[0]) * (box[3] - box[1])
+                    if self.box_size > 5000:
+                        self.go_straight = True
 
-        # if self.peduncle_marker.points == []:
-        #     self.peduncle_marker.points.append(Point(0, 0, 0))
-            
-        # self.peduncle_marker.header.stamp = rospy.Time.now()
-        # self.peduncle_marker_publisher.publish(self.peduncle_marker)
 
         self.pepper_center_publisher.publish(self.pepper_center)
         self.peduncle_center_publisher.publish(self.peduncle_center)

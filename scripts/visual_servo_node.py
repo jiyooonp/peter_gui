@@ -40,10 +40,12 @@ class VisualServoingNode:
 
     def pepper_center_callback(self, data):
         self.pepper_center = [data.x, data.y, data.z]
+        print(":pepper:", self.peduncle_center)
        
 
     def peduncle_center_callback(self, data):
         self.peduncle_center = [data.x, data.y, data.z]
+        print(":peduncle:", self.peduncle_center)
         
 
     def publish_velocity(self):

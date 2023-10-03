@@ -1,6 +1,0 @@
-<launch>
-
-  <!-- xarm teleop -->
-  <node pkg="amiga_xarm"  name="xarm_joystick_control" type="xarm_joystick_test"></node>
-  
-</launch>

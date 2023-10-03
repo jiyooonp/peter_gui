@@ -6,6 +6,7 @@ from sensor_msgs.msg import Joy
 from std_msgs.msg import Int16
 from geometry_msgs.msg import Twist
 from xarm_msgs.msg import RobotMsg
+from manipulation_node import Manipulator
 
 
 """
@@ -22,6 +23,7 @@ class PlannerNode:
         self.joy_state = Joy()
         self.fake_joy = Joy()
         self.visual_servoing_state = Twist()
+        self.manipulator = Manipulator()
 
         # initial fake joy values
         self.fake_joy.header.frame_id = "/dev/input/js0"
@@ -108,28 +110,33 @@ class PlannerNode:
 
 
     def run(self):
-        """check what state the robot is in and run the corresponding planner"""
-        # idle state
+        """check what state the robot is in and run the corresponding actions"""
+
         print(self.state)
+
+        # idle state
         if self.state == 0:
-            # print("idle state")
             pass
-        
+
         # manual teleop state (forward joystick messages to arm and EE)
         elif self.state == 1:
-            # print("manual teleop state")
             self.joy_pub.publish(self.joy_state) # publish real joy arm
+
+        # move to init pose
+        elif self.state == 2:
+            self.manipulator.moveToInit()
         
         # auto visual servo state
-        elif self.state == 2:
-            # self.fake_joy.header.stamp = rospy.Time.now()
-            # self.fake_joy.axes = [0 for _ in range(0,8)]
-            # self.fake_joy.buttons = [0 for _ in range(0,11)]
-            # # cartesian move forward if X is pressed
-            # if (self.joy_state.buttons[2] == 1):
-            #     self.fake_joy.axes = [0 for _ in range(0,8)]
-            #     self.fake_joy.axes[4] = 0.5 # forward is positive x
+        elif self.state == 3:
             self.joy_pub.publish(self.fake_joy) # publish fake joy to arm
+
+        # cartesian move forward
+        elif self.state == 4:
+            self.manipulator.cartesianMove(0.1)
+
+        # move to basket
+        elif self.state == 5:
+            self.manipulator.moveToBasket()
 
 
 if __name__ == '__main__':

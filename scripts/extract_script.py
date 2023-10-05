@@ -36,7 +36,7 @@ def extract_images_from_bag(bag_file, topic, output_folder):
                 output_folder, f"frame_{count:04d}.png")
 
             # Save the image
-            if count % 20 == 0:
+            if count % 5 == 0:
                 cv2.imwrite(output_filename, cv_image)
                 print(f"Saved: {output_filename}")
 
@@ -46,8 +46,12 @@ def extract_images_from_bag(bag_file, topic, output_folder):
 if __name__ == '__main__':
 
     # sys.argv[1]
-    bag_file = "/root/catkin_ws/bag/iowa_1_2023-09-25-15-22-28.bag"
+    folder_path = "/root/catkin_ws/levelb_rosbag"
+    output_folder = "/root/catkin_ws/video_bag/"
     topic = "/camera/color/image_raw"
-    output_folder = "/root/catkin_ws/video_bag/bag1"
 
-    extract_images_from_bag(bag_file, topic, output_folder)
+    for bag_file in os.listdir(folder_path):
+        bag_name = bag_file.split(".")[0]
+        print("converting: ", bag_name)
+        extract_images_from_bag(bag_file, topic, output_folder + bag_name)
+

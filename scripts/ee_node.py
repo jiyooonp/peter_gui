@@ -5,9 +5,9 @@ from sensor_msgs.msg import Joy
 from std_msgs.msg import Int16
 from ag_gripper_driver.srv import Pegasus, PegasusResponse
 
-class EENode:
+class EE_teleop:
     def __init__(self) -> None:
-        rospy.init_node('ee_node', anonymous=True)
+        rospy.init_node('End_Effector', anonymous=True)
         self.joy_state = Joy()
         self.joystick_callback = rospy.Subscriber('/joy_relay', Joy, self.joystick_callback, queue_size=1)
 
@@ -60,7 +60,7 @@ class EENode:
 if __name__ == '__main__':
 
     try:
-        EE_node = EENode()
+        EE = EE_teleop()
         while not rospy.is_shutdown():
             rospy.sleep(0.1)
 

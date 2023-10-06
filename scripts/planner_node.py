@@ -7,6 +7,7 @@ from std_msgs.msg import Int16
 from geometry_msgs.msg import Twist
 from xarm_msgs.msg import RobotMsg
 from manipulator import Manipulator
+from ag_gripper_driver.srv import Pegasus, PegasusResponse
 
 
 """
@@ -45,6 +46,8 @@ class PlannerNode:
         
         # publishers
         self.joy_pub = rospy.Publisher('/joy_relay', Joy, queue_size=1) # joystick commands pub
+        self.planner_state_pub = rospy.Publisher('/planner_state', bool, queue_size=1) # planner state pub
+        self.state_pub = rospy.Publisher('/state', Int16, queue_size=1) # state pub
 
     def state_callback(self, data):
         """Callback for state message"""
@@ -108,10 +111,26 @@ class PlannerNode:
 
         return
     
-    def send_to_ee(self):
+    def send_to_ee(self, command):
         # send commands to open, harvest, or close
         # need to wait for confirmation this is done before returning
+
+        rospy.wait_for_service('/gripper_service')
+        if command == "open":
+            try:
+                Pegasus_action = rospy.ServiceProxy('/gripper_service',Pegasus)
+                Pegasus_action(1)
+            except rospy.ServiceException as e:
+                print("Service call failed: %s"%e)
+
+        elif command == "harvest":
+            try:
+                Pegasus_action = rospy.ServiceProxy('/gripper_service',Pegasus)
+                Pegasus_action(0)
+            except rospy.ServiceException as e:
+                print("Service call failed: %s"%e)
         return
+        
 
     def run(self):
         """check what state the robot is in and run the corresponding actions"""
@@ -120,47 +139,59 @@ class PlannerNode:
         if self.state == 0:
             pass
 
-        # manual teleop
+        # teleoperation - manual only
         elif self.state == 1:
             self.joy_pub.publish(self.joy_state) # publish real joy arm and ee
 
-        # autonomous mode
+        # visual servoing - manual only
         elif self.state == 2:
+            self.joy_pub.publish(self.fake_joy) 
 
-            print(self.autonomous_phase)
+        # return to init - manual only
+        elif self.state == 3:
+            self.manipulator.moveToInit()
 
-            # move to init pose
-            if self.autonomous_phase == "init":
-                self.manipulator.moveToInit()
-                self.autonomous_phase = "vs"
-        
-            # auto visual servo
-            elif self.autonomous_phase == "vs":
-                self.joy_pub.publish(self.fake_joy) # publish fake joy to arm
-                # todo: need to determine end condition here
-                self.autonomous_phase = "pregrasp"
+        # ----- Initializing Autonomous Procedure -----
+        # move to init position 
+        elif self.state == 4:
+            self.planner_state_pub(False)
+            self.manipulator.moveToInit() 
+            rospy.loginfo("Plan Execution: Initalization Complete")
+            self.planner_state_pub(True)
 
-            # pregrasp: open ee and cartesian move
-            elif self.autonomous_phase == "pregrasp":
-                # todo: open gripper/cutter and confirm it's done
-                self.manipulator.cartesianMove(0.1)
-                self.autonomous_phase = "harvest"
+        # visual servo to 10 cm in front of plant
+        elif self.state == 5:
+            self.planner_state_pub(False)
+            self.joy_pub.publish(self.fake_joy) 
+            rospy.loginfo("Plan Execution: Visual Servoing Complete")
 
-            # harvest pepper
-            elif self.autonomous_phase == "harvest":
-                # todo: ee harvest
-                self.autonomous_phase = "basket"
+            #TODO: NEED TO DETERMINE END CONDITION HERE
+            self.planner_state_pub(True)
 
-            # basket drop
-            elif self.autonomous_phase == "basket":
-                self.manipulator.moveToBasket(0.1)
-                # todo: open gripper
-                self.manipulator.moveToInit()
-                self.autonomous_phase = "done"
+        # move to pregrasp position: open ee aplace ee at cut/grip position
+        elif self.state == 6:
+            self.planner_state_pub(False)
+            self.send_to_ee("open")
+            self.manipulator.cartesianMove(0.1)
+            self.planner_state_pub(True)
 
-            else:
-                print("done with autonomous harvesting sequence")
+        # harvest pepper
+        elif self.state == 7:
+            self.planner_state_pub(False)
+            self.send_to_ee("harvest")
+            self.planner_state_pub(True)
 
+        # move to basket and drop
+        elif self.state == 8:
+            self.planner_state_pub(False)
+            self.manipulator.moveToBasket(0.1)
+            self.send_to_ee("open")
+            self.manipulator.moveToInit()
+            self.planner_state_pub(True)
+
+        else:
+            rospy.loginfo("ERROR: UNRECOGNIZED STATE IN PLANNER NODE")
+            self.state_pub.publish(10)
 
 
 if __name__ == '__main__':

@@ -3,66 +3,107 @@
 ### ROS node for state machine
 import rospy
 from sensor_msgs.msg import Joy
+from sensor_msgs.msg import JointState
 from std_msgs.msg import Int16
 
 from xarm_msgs.srv import SetInt16, SetInt16Response
+from numpy.linalg import norm
 
 """
-Possible states:
+---- Possible states -----
+--Manual--
 idle: 0
-manual teleop: 1
-auto visual servo: 2
+teleop: 1
+visual servo: 2
 return to init: 3
-error: 4
+
+--Autonomous--
+initialize: 4
+visual servo: 5
+cartesian move: 6
+harvest: 7
+move to basket: 8
+
+
+ERROR: 10
 
 """
-# TODO Alex & Solomon: finish implementing state machine node
+
 class StateMachineNode:
     """ROS node for state machine"""
     def __init__(self):
         rospy.init_node('state_machine_node', anonymous=True)
+
+        # --------- JOYSTICK -------------
         self.joy_state = Joy()
         # subscribe to joystick message
         self.joystick_callback = rospy.Subscriber('/joy', Joy, self.joystick_callback, queue_size=1)
+
+        # --------- STATE PUBLISHER INITIALIZATION -------------
         # create publisher that contiously publishes state at specified rate
         self.state_pub = rospy.Publisher('/state', Int16, queue_size=1)
         self.state = 0 # initial state is 0 (idle)
         
-        # how many times you receive the same button press
-        # self.last_pressed = 0
-        # self.button_counter = 0 
-
+        # --------- XARM SERVICE INITIALIZATION -------------
         # make a service server to be able to change the arm state
         self.xarm_mode_service = rospy.ServiceProxy("/xarm/set_mode", SetInt16)
         self.xarm_state_service = rospy.ServiceProxy("/xarm/set_state", SetInt16)
 
+        # --------- ROBOT SUBSYSTEM SUBSCRIBERS -------------
+        # subscribe to xarm joint state
+        self.manipulator_state_sub = rospy.Subscriber('/xarm/jointState', JointState, self.manipulator_state_callback, queue_size=1)
+        # subscribe to perception node
+        self.perception_state_sub = rospy.Subscriber('/perception_state', Int16, self.perception_state_callback, queue_size=1)
+        # subscribe to planner node
+        self.planner_state_sub = rospy.Subscriber('/planner_state', bool, self.planner_state_callback, queue_size=1)
 
+        # --------- ROBOT SUBSYSTEM VARIABLES -------------
+        self.joint_velocity = None
+        self.manipulator_moving = None
+        self.zero_vel_threshold = 1e-3
+        self.perception_state = None
+        self.planner_state = None
+
+    # TODO: Incorperate perception feedback
+    # --------- PERCEPTION STATE CALLBACK ------------- #
+    # subscribe to topic with image detections
+
+    # subscribe to topic with depth info 
+    def perception_state_callback(self, data):
+        """Callback for perception state message"""
+        self.perception_state = data.data
+
+    # --------- PLANNER STATE CALLBACK -------------
+    def planner_state_callback(self, data):
+        """Callback for planner state message"""
+        if self.plan_executed != data.data:
+            if data.data == True:
+                print("plan executed - state machine")  #debug
+            self.plan_executed = data.data
+
+    # --------- MANIPULATOR STATE CALLBACK -------------
+    def manipulator_state_callback(self, joint):
+        """Callback for manipulator state message"""
+
+        if norm(joint.velocity) < self.zero_vel_threshold:
+            rospy.loginfo_throttle_identical(10,"STATE MACHINE: Manipulator is still")
+            self.manipulator_moving = False
+        else:
+            rospy.loginfo_throttle_identical(10,"STATE MACHINE: Manipulator is moving")
+            self.manipulator_moving = True
+
+
+    # --------- JOYSTICK CALLBACK -------------
     def joystick_callback(self, data):
         """Callback for joystick message"""
         # update joy state
         self.joy_state = data.buttons
-        # check if any of the joystick buttons are pressed
-        # if A button is pressed go back to init position
-        
-        # TODO choose manual and teleop switch button is pressed, go to state 1
-        # TODO if auto visual servo button is pressed, go to state 2
         
         '''
         Assumptions:
         - Only one button is pressed at a time
         '''
-        
-        # track if the button is being pressed for a while
-        # if self.last_pressed == self.joy_state: 
-        #     self.button_counter += 1
-        # else:
-        #     self.button_counter = 0
-        
-        #if the button has been pressed for a while, change the state
-        # if self.button_counter > 10:
-            
-        #  double square -> manual teleop
-        # if (self.joy_state[6] or self.joy_state[2]) and self.state != 1:
+
         if self.joy_state[6] and self.state != 1:
             self.state = 1
             rospy.loginfo("Enter Manual Mode")
@@ -77,42 +118,69 @@ class StateMachineNode:
             self.state = 0
             rospy.loginfo("Enter Idle Mode")                
         
-    # def xarm_mode_service_call(self, mode):
+
+    # --------- DECIDE STATE -------------
+    def decide_state(self):
+         # idle - manual only 
+        if self.state == 0:
+            pass    # state decided by joystick callback
+
+        # teleop - manual only
+        elif self.state == 1:
+            pass    # state decided by joystick callback
         
-    #     try:
-            
-    #         mode_response, state_response = None, None
-    #         if mode == 0:
-    #             mode_response = self.xarm_mode_service(0)
-    #             state_response = self.xarm_state_service(4)
-    #         else:
-    #             mode_response = self.xarm_mode_service(0)
-    #             state_response = self.xarm_state_service(0)
-                
-    #         if mode_response is not None and state_response.ret == mode_response.ret == 0:
-    #             rospy.logwarn(f"\n{state_response.message} {mode_response.message}")  
-    #             return True
+        # visual servo - manual only
+        elif self.state == 2:
+            pass    # state decided by joystick callback
 
-    #         elif mode_response.ret != 0: 
-    #             rospy.logwarn(f"Service mode call failed: {state_response.message}")               
-    #             return False
-            
-    #         elif state_response.ret != 0:
-    #             rospy.logwarn(f"Service state call failed: {state_response.message}")
-    #             return False
-            
-    #     except rospy.ServiceException as e:
-    #         rospy.logwarn("Service call failed: {}".format(e))
-    #         return False
+        # return to init - manual only
+        elif self.state == 3:
+            pass    # state decided by joystick callback
 
+        # move to init pose
+        elif self.state == 4 and self.plan_executed and not self.manipulator_moving:
+            self.state = 5
+    
+        # auto visual servo
+        # TODO: Add perception end condition verification
+        elif self.state == 5 and self.plan_executed and not self.manipulator_moving:
+            self.state = 6
+
+        # pregrasp: open ee and cartesian move
+        elif self.state == 6 and self.plan_executed and not self.manipulator_moving:
+            self.state = 7
+
+        # harvest pepper
+        elif self.state == 7 and self.plan_executed and not self.manipulator_moving:
+            self.state = 8
+
+        # basket drop
+        elif self.state == 8 and self.plan_executed and not self.manipulator_moving:
+            # if more pepper seen in pepper detection topic
+                # self.state = 4
+            # else:
+                rospy.loginfo_throttle_identical(10,"done with autonomous harvesting sequence")
+
+        else:
+            rospy.loginfo_throttle_identical(1,"ERROR: UNRECOGNIZED STATE IN STATE MACHINE NODE")
+            self.state == 10
+
+
+
+
+
+    # --------- MAIN LOOP -------------
     def run(self):
         """Main loop"""
 
         while not rospy.is_shutdown():
-            # publish state
-            self.state_pub.publish(self.state)
-            # sleep for 10 Hz
-            rospy.sleep(0.1)
+            if self.state != 10:
+                # publish state
+                self.decide_state()
+                self.state_pub.publish(self.state)
+            else:
+                # sleep for 10 Hz
+                rospy.sleep(0.1)
 
 if __name__ == '__main__':
     try:

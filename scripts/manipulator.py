@@ -12,8 +12,8 @@ class Manipulator:
 
     def __init__(self):
         # initialize values
-        self.ip = rospy.get_param('/xarm/xarm_robot_ip')
-        # self.ip = '192.168.1.214'
+        # self.ip = rospy.get_param('/xarm/xarm_robot_ip')
+        self.ip = '192.168.1.214'
         # self.init_pose = rospy.get_param('/init_pose')
         # self.basket_pose = rospy.get_param('/basket_pose')
         # todo: put these in launch file

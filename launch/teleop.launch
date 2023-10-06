@@ -3,7 +3,4 @@
   <!-- xarm teleop -->
   <node pkg="amiga_xarm"  name="xarm_joystick_control" type="xarm_joystick_test"></node>
 
-  <!-- tf frames -->
-  <!-- <include file="$(find xarm_ros)/dual_xarm6_moveit_config/launch/ros_controllers.launch"></include> -->
-  
 </launch>

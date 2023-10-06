@@ -1,5 +1,6 @@
 cat test.sh
 !/usr/bin/env bash
+
 konsole --noclose --new-tab -e  /bin/bash && source ~/iowa_ws/devel/setup.bash && roslaunch realsense2_camera rs_aligned_depth.launch  filters:=pointcloud 1! &
 konsole --noclose --new-tab -e /bin/bash && source ~/iowa_ws/devel/setup.bash && rviz 2!&
 konsole --noclose --new-tab -e /bin/bash && source ~/mrsd_teamD/bin/activate && source ~/iowa_ws/devel/setup.bash && rosrun perception_refactor planner_node.py 3!&

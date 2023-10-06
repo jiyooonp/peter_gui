@@ -168,7 +168,7 @@ class PlannerNode:
             #TODO: NEED TO DETERMINE END CONDITION HERE
             self.planner_state_pub(True)
 
-        # move to pregrasp position: open ee aplace ee at cut/grip position
+        # move to pregrasp position: open ee and place ee at cut/grip position
         elif self.state == 6:
             self.planner_state_pub(False)
             self.send_to_ee("open")

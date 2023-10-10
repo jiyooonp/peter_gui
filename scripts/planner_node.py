@@ -3,7 +3,7 @@
 import rospy
 import math
 from sensor_msgs.msg import Joy
-from std_msgs.msg import Int16
+from std_msgs.msg import Int16, Bool
 from geometry_msgs.msg import Twist
 from xarm_msgs.msg import RobotMsg
 from manipulator import Manipulator
@@ -21,7 +21,6 @@ class PlannerNode:
         # initialize values
         rospy.init_node('planner_node', anonymous=True)
         self.state = 0
-        self.autonomous_phase = "init"
         self.joy_state = Joy()
         self.fake_joy = Joy()
         self.visual_servoing_state = Twist()
@@ -46,7 +45,7 @@ class PlannerNode:
         
         # publishers
         self.joy_pub = rospy.Publisher('/joy_relay', Joy, queue_size=1) # joystick commands pub
-        self.planner_state_pub = rospy.Publisher('/planner_state', bool, queue_size=1) # planner state pub
+        self.planner_state_pub = rospy.Publisher('/planner_state', Int16, queue_size=1) # planner state pub
         self.state_pub = rospy.Publisher('/state', Int16, queue_size=1) # state pub
 
     def state_callback(self, data):
@@ -115,7 +114,8 @@ class PlannerNode:
         # send commands to open, harvest, or close
         # need to wait for confirmation this is done before returning
 
-        rospy.wait_for_service('/gripper_service')
+
+        # rospy.wait_for_service('/gripper_service')
         if command == "open":
             try:
                 Pegasus_action = rospy.ServiceProxy('/gripper_service',Pegasus)
@@ -149,45 +149,46 @@ class PlannerNode:
 
         # return to init - manual only
         elif self.state == 3:
+            # print("!!!!!!!!!!!!!!!!!!!!!!1here!!!!!!!!!!!!!!!!")
             self.manipulator.moveToInit()
+            rospy.sleep(1)
 
         # ----- Initializing Autonomous Procedure -----
         # move to init position 
         elif self.state == 4:
-            self.planner_state_pub(False)
-            self.manipulator.moveToInit() 
+            self.manipulator.moveToInit()
+            # rospy.sleep(5)
             rospy.loginfo("Plan Execution: Initalization Complete")
-            self.planner_state_pub(True)
+            
+            self.planner_state_pub.publish(4) ##last completed plan
 
         # visual servo to 10 cm in front of plant
         elif self.state == 5:
-            self.planner_state_pub(False)
             self.joy_pub.publish(self.fake_joy) 
             rospy.loginfo("Plan Execution: Visual Servoing Complete")
 
             #TODO: NEED TO DETERMINE END CONDITION HERE
-            self.planner_state_pub(True)
+            self.planner_state_pub.publish(5)
 
         # move to pregrasp position: open ee and place ee at cut/grip position
         elif self.state == 6:
-            self.planner_state_pub(False)
-            self.send_to_ee("open")
+            # self.send_to_ee("open")
             self.manipulator.cartesianMove(0.1)
-            self.planner_state_pub(True)
+            # rospy.sleep(5)
+            self.planner_state_pub.publish(6)
 
         # harvest pepper
         elif self.state == 7:
-            self.planner_state_pub(False)
-            self.send_to_ee("harvest")
-            self.planner_state_pub(True)
+            # self.send_to_ee("harvest")
+            self.planner_state_pub.publish(7)
 
         # move to basket and drop
         elif self.state == 8:
-            self.planner_state_pub(False)
             self.manipulator.moveToBasket(0.1)
-            self.send_to_ee("open")
+            # rospy.sleep(5)
+            # self.send_to_ee("open")
             self.manipulator.moveToInit()
-            self.planner_state_pub(True)
+            self.planner_state_pub.publish(8)
 
         else:
             rospy.loginfo("ERROR: UNRECOGNIZED STATE IN PLANNER NODE")

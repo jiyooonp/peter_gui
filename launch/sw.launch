@@ -15,7 +15,7 @@
   <node pkg="perception_refactor"  name="state_machine_node" type="state_machine_node.py"></node>
 
   <!-- planner node-->
-  <node pkg="perception_refactor"  name="planner_node" type="planner_node.py"></node>
+  <!-- <node pkg="perception_refactor"  name="planner_node" type="planner_node.py"></node> -->
 
   <!-- visual servo node-->
   <node pkg="perception_refactor"  name="visual_servo_node" type="visual_servo_node.py"></node>

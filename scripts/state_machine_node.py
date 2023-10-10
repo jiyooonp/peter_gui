@@ -4,7 +4,7 @@
 import rospy
 from sensor_msgs.msg import Joy
 from sensor_msgs.msg import JointState
-from std_msgs.msg import Int16
+from std_msgs.msg import Int16, Bool
 
 from xarm_msgs.srv import SetInt16, SetInt16Response
 from numpy.linalg import norm
@@ -55,7 +55,7 @@ class StateMachineNode:
         # subscribe to perception node
         self.perception_state_sub = rospy.Subscriber('/perception_state', Int16, self.perception_state_callback, queue_size=1)
         # subscribe to planner node
-        self.planner_state_sub = rospy.Subscriber('/planner_state', bool, self.planner_state_callback, queue_size=1)
+        self.planner_state_sub = rospy.Subscriber('/planner_state', Int16, self.planner_state_callback, queue_size=1)
 
         # --------- ROBOT SUBSYSTEM VARIABLES -------------
         self.joint_velocity = None
@@ -63,6 +63,7 @@ class StateMachineNode:
         self.zero_vel_threshold = 1e-3
         self.perception_state = None
         self.planner_state = None
+        self.plan_executed = None
 
     # TODO: Incorperate perception feedback
     # --------- PERCEPTION STATE CALLBACK ------------- #
@@ -77,8 +78,7 @@ class StateMachineNode:
     def planner_state_callback(self, data):
         """Callback for planner state message"""
         if self.plan_executed != data.data:
-            if data.data == True:
-                print("plan executed - state machine")  #debug
+            print("plan executed - state machine")  #debug
             self.plan_executed = data.data
 
     # --------- MANIPULATOR STATE CALLBACK -------------
@@ -110,8 +110,8 @@ class StateMachineNode:
 
         # xbox button -> vs mode
         elif self.joy_state[8] and self.state != 2: 
-            self.state = 2
-            rospy.loginfo("Enter VS Mode")
+            self.state = 4
+            rospy.loginfo("Initializing via State 4")
             
         # Y -> enter idle mode
         elif self.joy_state[3] and self.state != 0:
@@ -138,26 +138,26 @@ class StateMachineNode:
             pass    # state decided by joystick callback
 
         # move to init pose
-        elif self.state == 4 and self.plan_executed and not self.manipulator_moving:
+        elif self.state == 4 and self.plan_executed == 4 and not self.manipulator_moving:
             self.state = 5
     
         # auto visual servo
         # TODO: Add perception end condition verification
-        elif self.state == 5 and self.plan_executed and not self.manipulator_moving:
+        elif self.state == 5 and self.plan_executed == 5 and not self.manipulator_moving:
             self.state = 6
 
         # pregrasp: open ee and cartesian move
-        elif self.state == 6 and self.plan_executed and not self.manipulator_moving:
+        elif self.state == 6 and self.plan_executed == 6 and not self.manipulator_moving:
             self.state = 7
 
         # harvest pepper
-        elif self.state == 7 and self.plan_executed and not self.manipulator_moving:
+        elif self.state == 7 and self.plan_executed == 7 and not self.manipulator_moving:
             self.state = 8
 
         # basket drop
-        elif self.state == 8 and self.plan_executed and not self.manipulator_moving:
+        elif self.state == 8 and self.plan_executed == 8 and not self.manipulator_moving:
             # if more pepper seen in pepper detection topic
-                # self.state = 4
+                self.state = 4
             # else:
                 rospy.loginfo_throttle_identical(10,"done with autonomous harvesting sequence")
 

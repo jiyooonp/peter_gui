@@ -1,9 +1,13 @@
 <launch>
 
   <!-- params -->
-  <arg name="robot_ip" default="192.168.1.213"/>
+  <arg name="robot_ip" default="192.168.1.214"/>
+  <param name="xarm_robot_ip" type="string" value="192.168.1.196"/>
   <arg name="joy_dev" default="/dev/input/js0" />
   <arg name="joystick" default="true" />
+  <!-- <param name="tf_yaml" type="string" value="~/Documents/iowa_ws/src/ISU_Demo_Perception/scripts/flat_mount_tf.yaml" /> -->
+  <param name="tf_yaml" type="string" value="/config/flat_mount_tf.yaml" />
+
 
   <!--joystick node-->
   <node name="joystick_node" pkg="joy" type="joy_node"></node>
@@ -11,6 +15,7 @@
   <!-- xarm launch -->
   <include file="$(find xarm_bringup)/launch/xarm6_server.launch">
       <arg name="robot_ip" value="$(arg robot_ip)"/>
+      <arg name="show_rviz" value="true"/>
   </include>
 
 </launch>

@@ -1,12 +1,12 @@
 <launch>
 
   <!-- Define basket drop position joint space pose parameters -->
-  <param name="/joint1_basket" value="-1.515"/>
+  <!-- <param name="/joint1_basket" value="-1.515"/>
   <param name="/joint2_basket" value="0.0617"/>
   <param name="/joint3_basket" value="-1.020"/>
   <param name="/joint4_basket" value="-0.2411"/>
   <param name="/joint5_basket" value="-0.6781"/>
-  <param name="/joint6_basket" value="0.1951"/>
+  <param name="/joint6_basket" value="0.1951"/> -->
 
   <!-- realsense -->
   <include file="$(find realsense2_camera)/launch/rs_aligned_depth.launch"></include>
@@ -28,5 +28,8 @@
 
   <!-- manipulation node-->
   <node pkg="perception_refactor"  name="manipulator" type="manipulator.py"></node>
+
+  <!-- tf node-->
+  <node pkg="perception_refactor"  name="tf_handler_node" type="tf_handler_node.py"></node>
 
 </launch>

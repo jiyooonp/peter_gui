@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 
+import os
 import rospy
 import numpy as np
-import yaml
+import rospkg 
 import tf2_ros
 import geometry_msgs.msg
+import yaml
 import tf_conversions
+
 
 """
 broadcase yaml
@@ -18,32 +21,42 @@ class TfBroadcaster:
         rospy.init_node("tf_handler_node")
         tf_yaml = rospy.get_param('/tf_yaml')
         
-        self.parseYaml(tf_yaml)
+        rospack = rospkg.RosPack()
+        # get the file path for rospy_tutorials
+        package_path = rospack.get_path("perception_refactor")
+        
+        self.parseYaml(tf_yaml, package_path)
 
         
     def broadcast(self):
-
-        rot = self.H[0:3, 0:3]
-        quaternion = tf_conversions.transformations.quaternion_from_matrix(rot)
-        trans = self.H[0:3, 3]
+        # rot = self.H[:3, :3]
+        quaternion = tf_conversions.transformations.quaternion_from_matrix(self.H)
+        trans = self.H[:, 3]
         
         br = tf2_ros.StaticTransformBroadcaster()
         transform = geometry_msgs.msg.TransformStamped()
         transform.header.stamp = rospy.Time.now()
         transform.header.frame_id = "link_eef"
         transform.child_frame_id = "realsense_frame"
-        transform.translation = trans
-        transform.rotation = quaternion
+        
+        transform.transform.translation.x = trans[0]
+        transform.transform.translation.y = trans[1]
+        transform.transform.translation.z = trans[2]
+
+        transform.transform.rotation.x = quaternion[0]
+        transform.transform.rotation.y = quaternion[1]
+        transform.transform.rotation.z = quaternion[2]
+        transform.transform.rotation.w = quaternion[3]
         
         br.sendTransform(transform)
         
 
-    def parseYaml(self, yaml_file):
+    def parseYaml(self, yaml_file, package_path):
         """parse the yaml to reveal all the relevant transforms"""
     
         # parse data 
         data = dict()
-        with open(yaml_file, "r") as file:
+        with open(os.path.join(package_path + yaml_file), "r") as file:
             data = yaml.safe_load(file)
         
         # convert the 2d matrices to a list of transforms
@@ -52,10 +65,11 @@ class TfBroadcaster:
             transforms.append(np.array(tf_mat))
           
         # apply transforms on to the right of each other  
-        HTM = np.diag(4)
+        HTM = np.eye(4)
         for tf in transforms:
             HTM = HTM @ tf   
             
+        # rospy.logwarn(HTM)
         self.H = HTM      
 
 

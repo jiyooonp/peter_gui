@@ -18,7 +18,7 @@ class Manipulator:
         # self.init_pose = rospy.get_param('/init_pose')
         # self.basket_pose = rospy.get_param('/basket_pose')
         # todo: put these in launch file
-        self.init_pose = [262.789368, 0.513268, 505.799835, 87.280666, -44.962863, 84.593953]
+        self.init_pose = [200, 0, 500, 87.280666, -44.962863, 84.593953]
         self.basket_pose = [201.56279, -168.17691, 513.328613, 85.901671, -44.935476, 45.608758]
 
         # initialize xArm
@@ -31,7 +31,7 @@ class Manipulator:
     def moveToInit(self):
         """move to initial position"""
         print("Moving to initial pose")
-        self.arm.set_position(self.init_pose[0], self.init_pose[1], self.init_pose[2], self.init_pose[3], self.init_pose[4], self.init_pose[5], wait=True)
+        self.arm.set_position(self.init_pose[0], self.init_pose[1], self.init_pose[2], self.init_pose[3], self.init_pose[4], self.init_pose[5], wait=True, speed=20)
 
     def moveToBasket(self, dist):
         """move to basket"""
@@ -48,14 +48,21 @@ class Manipulator:
         self.arm.set_position(x+dist, y, z, roll, pitch, yaw, wait=True) # todo: test out relative=True
 
     def moveToPoi(self,x,y,z):
+        # convert to mm from m
+        x *= 1000
+        y *= 1000
+        z *= 1000
+
+        # add offsets
         x -= self.pregrasp_offset # pregrasp offset
         x -= 0.15 # ee length
-        self.arm.set_position(x,y,z,87.280666, -44.962863, 84.593953, wait=True)
+
+        self.arm.set_position(x,y,z,87.280666, -44.962863, 84.593953, wait=True, speed=20)
 
     def test(self):
         print("TESTING")
         self.moveToInit()
-        self.moveToBasket(0.05)
+        self.moveToBasket(0.15)
         return
     
     def disconnect(self):

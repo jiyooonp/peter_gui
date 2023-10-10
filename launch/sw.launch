@@ -9,7 +9,12 @@
   <param name="/joint6_basket" value="0.1951"/> -->
 
   <!-- realsense -->
-  <include file="$(find realsense2_camera)/launch/rs_aligned_depth.launch"></include>
+  <include file="$(find realsense2_camera)/launch/rs_aligned_depth.launch">
+    <arg name="enable_pointcloud" value="true" />
+  </include>
+
+  <!-- tf node-->
+  <node pkg="perception_refactor"  name="tf_handler_node" type="tf_handler_node.py"></node>
 
   <!-- state machine node-->
   <node pkg="perception_refactor"  name="state_machine_node" type="state_machine_node.py"></node>
@@ -18,7 +23,7 @@
   <!-- <node pkg="perception_refactor"  name="planner_node" type="planner_node.py"></node> -->
 
   <!-- visual servo node-->
-  <node pkg="perception_refactor"  name="visual_servo_node" type="visual_servo_node.py"></node>
+  <!-- <node pkg="perception_refactor"  name="visual_servo_node" type="visual_servo_node.py"></node> -->
 
   <!-- ee node-->
   <node pkg="perception_refactor"  name="ee_node" type="ee_node.py"></node>
@@ -28,8 +33,5 @@
 
   <!-- manipulation node -->
   <node pkg="perception_refactor"  name="manipulator" type="manipulator.py"></node>
-
-  <!-- tf node-->
-  <node pkg="perception_refactor"  name="tf_handler_node" type="tf_handler_node.py"></node>
 
 </launch>

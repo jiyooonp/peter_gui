@@ -19,7 +19,7 @@ import tf2_ros
 from geometry_msgs.msg import Point
 from visualization_msgs.msg import Marker
 from sensor_msgs.msg import CameraInfo
-from std_msgs.msg import String
+from std_msgs.msg import String, Int16
 from tf.transformations import quaternion_matrix
 from get_poi import PepperPeduncle
 
@@ -51,7 +51,7 @@ class PerceptionNode:
         # Make marker for visualization
         self.peduncle_marker_rs = Marker()
         self.peduncle_marker_rs.type = 8
-        self.peduncle_marker_rs.header.frame_id = "realsense_frame"
+        self.peduncle_marker_rs.header.frame_id = "camera_color_optical_frame"
         self.peduncle_marker_rs.color.r = 0.0
         self.peduncle_marker_rs.color.g = 0.0
         self.peduncle_marker_rs.color.b = 1.0
@@ -61,7 +61,7 @@ class PerceptionNode:
 
         self.peduncle_marker_base = Marker()
         self.peduncle_marker_base.type = 8
-        self.peduncle_marker_base.header.frame_id = "base_link"
+        self.peduncle_marker_base.header.frame_id = "link_base"
         self.peduncle_marker_base.color.r = 1.0
         self.peduncle_marker_base.color.g = 0.0
         self.peduncle_marker_base.color.b = 1.0
@@ -71,7 +71,7 @@ class PerceptionNode:
 
         self.pepper_marker_rs = Marker()
         self.pepper_marker_rs.type = 8
-        self.pepper_marker_rs.header.frame_id = "realsense_frame"
+        self.pepper_marker_rs.header.frame_id = "camera_color_optical_frame"
         self.pepper_marker_rs.color.r = 1.0
         self.pepper_marker_rs.color.g = 0.0
         self.pepper_marker_rs.color.b = 0.0
@@ -81,13 +81,13 @@ class PerceptionNode:
 
         self.pepper_marker_base = Marker()
         self.pepper_marker_base.type = 8
-        self.pepper_marker_base.header.frame_id = "base_link"
+        self.pepper_marker_base.header.frame_id = "link_base"
         self.pepper_marker_base.color.r = 0.0
         self.pepper_marker_base.color.g = 1.0
         self.pepper_marker_base.color.b = 0.0
         self.pepper_marker_base.color.a = 1.0
-        self.pepper_marker_base.scale.x = 0.02
-        self.pepper_marker_base.scale.y = 0.02
+        self.pepper_marker_base.scale.x = 0.06
+        self.pepper_marker_base.scale.y = 0.06
 
         self.go_straight = False
 
@@ -113,6 +113,13 @@ class PerceptionNode:
             '/pepper_center', Point, queue_size=1)
         self.peduncle_center_publisher = rospy.Publisher(
             '/peduncle_center', Point, queue_size=1)
+        
+        self.poi = Point()
+        self.poi_pub = rospy.Publisher(
+            '/poi', Point, queue_size=1)
+        
+        self.state = None
+        self.state_sub = rospy.Subscriber('/state', Int16, self.state_callback, queue_size=1)
         
         self.peduncle_box_size_publisher = rospy.Publisher(
             '/peduncle_box_size', String, queue_size=1)
@@ -201,6 +208,11 @@ class PerceptionNode:
                     self.pepper_marker_base.header.stamp = rospy.Time.now()
                     self.pepper_marker_base_pub.publish(self.pepper_marker_base)
 
+                    if self.state != 5:
+                        self.poi.x = X_b
+                        self.poi.y = Y_b
+                        self.poi.z = Z_b
+
                     self.last_pepper_center = self.pepper_center
 
                 else: # it is a peduncle
@@ -251,6 +263,7 @@ class PerceptionNode:
                 self.detection_void_count = 0
                 print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n\nn\n\n\n\nn\n\n\n\n\nn\n\n\n\nn\n\nn\n\n\nn\n")
 
+        self.poi_pub.publish(self.poi)
         self.pepper_center_publisher.publish(self.pepper_center)
         self.peduncle_center_publisher.publish(self.peduncle_center)
 
@@ -309,9 +322,8 @@ class PerceptionNode:
     def transform_to_base_frame(self, X, Y, Z):
         # Get transform
         try:
-
-            transformation = self.tfBuffer.lookup_transform("base_link", "realsense_frame", rospy.Time(), rospy.Duration(0.1))
-
+            transformation = self.tfBuffer.lookup_transform("link_base", "camera_color_optical_frame", rospy.Time(), rospy.Duration(0.1))
+            
             # Get translation and rotation
             trans, quat = transformation.transform.translation, transformation.transform.rotation
 
@@ -327,6 +339,9 @@ class PerceptionNode:
         
         except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
             print("Error getting the transform")
+
+    def state_callback(self, msg):
+        self.state = msg.data
 
 
 if __name__ == '__main__':

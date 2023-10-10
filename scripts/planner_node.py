@@ -179,17 +179,18 @@ class PlannerNode:
         # move to pre-grasp
         elif self.state == 5:
             try:
+                print("in state 5")
                 xarm = Manipulator()
                 if self.poi:
                     xarm.moveToPoi(self.poi.x, self.poi.y, self.poi.z)
                 else:
-                    rospy.loginfo("NO POI DETCTED YET!!!")
+                    rospy.logwarn("NO POI DETCTED YET!!!")
                 rospy.sleep(.1)
                 xarm.disconnect()
                 rospy.sleep(.1)
                 self.planner_state_pub.publish(5)
             except:
-                rospy.loginfo("ERROR: UNABLE TO MOVE TO PREGRASP POSITION")
+                rospy.logwarn("ERROR: UNABLE TO MOVE TO PREGRASP POSITION")
                 self.state_pub.publish(10)
 
         # move to poi: open ee and place ee at cut/grip position
@@ -200,7 +201,7 @@ class PlannerNode:
                 rospy.sleep(.1)
                 xarm.disconnect()
                 rospy.sleep(.1)
-                rospy.loginfo("Plan Execution: Move to Pregrasp Complete")
+                rospy.loginfo("Plan Execution: Move to POI Complete")
                 self.planner_state_pub.publish(6)
             except:
                 rospy.loginfo("ERROR: UNABLE TO MOVE TO POI")

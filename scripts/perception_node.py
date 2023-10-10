@@ -15,10 +15,12 @@ from shapely import Polygon
 import cv_bridge
 import io
 import rospkg
+import tf2_ros
 from geometry_msgs.msg import Point
 from visualization_msgs.msg import Marker
 from sensor_msgs.msg import CameraInfo
 from std_msgs.msg import String
+from tf.transformations import quaternion_matrix
 from get_poi import PepperPeduncle
 
 
@@ -47,32 +49,59 @@ class PerceptionNode:
             package_path+'/weights/iowa_train_3.pt')
         
         # Make marker for visualization
-        self.peduncle_marker = Marker()
-        self.peduncle_marker.type = 8
-        self.peduncle_marker.header.frame_id = "camera_color_optical_frame"
-        self.peduncle_marker.color.r = 1.0
-        self.peduncle_marker.color.g = 0.0
-        self.peduncle_marker.color.b = 0.0
-        self.peduncle_marker.color.a = 1.0
-        self.peduncle_marker.scale.x = 0.05
-        self.peduncle_marker.scale.y = 0.05
+        self.peduncle_marker_rs = Marker()
+        self.peduncle_marker_rs.type = 8
+        self.peduncle_marker_rs.header.frame_id = "camera_color_optical_frame"
+        self.peduncle_marker_rs.color.r = 0.0
+        self.peduncle_marker_rs.color.g = 0.0
+        self.peduncle_marker_rs.color.b = 1.0
+        self.peduncle_marker_rs.color.a = 1.0
+        self.peduncle_marker_rs.scale.x = 0.05
+        self.peduncle_marker_rs.scale.y = 0.05
 
-        self.pepper_marker = Marker()
-        self.pepper_marker.type = 8
-        self.pepper_marker.header.frame_id = "camera_color_optical_frame"
-        self.pepper_marker.color.r = 1.0
-        self.pepper_marker.color.g = 0.0
-        self.pepper_marker.color.b = 0.0
-        self.pepper_marker.color.a = 1.0
-        self.pepper_marker.scale.x = 0.05
-        self.pepper_marker.scale.y = 0.05
+        self.peduncle_marker_base = Marker()
+        self.peduncle_marker_base.type = 8
+        self.peduncle_marker_base.header.frame_id = "base_link"
+        self.peduncle_marker_base.color.r = 1.0
+        self.peduncle_marker_base.color.g = 0.0
+        self.peduncle_marker_base.color.b = 1.0
+        self.peduncle_marker_base.color.a = 1.0
+        self.peduncle_marker_base.scale.x = 0.02
+        self.peduncle_marker_base.scale.y = 0.02
+
+        self.pepper_marker_rs = Marker()
+        self.pepper_marker_rs.type = 8
+        self.pepper_marker_rs.header.frame_id = "camera_color_optical_frame"
+        self.pepper_marker_rs.color.r = 1.0
+        self.pepper_marker_rs.color.g = 0.0
+        self.pepper_marker_rs.color.b = 0.0
+        self.pepper_marker_rs.color.a = 1.0
+        self.pepper_marker_rs.scale.x = 0.05
+        self.pepper_marker_rs.scale.y = 0.05
+
+        self.pepper_marker_base = Marker()
+        self.pepper_marker_base.type = 8
+        self.pepper_marker_base.header.frame_id = "base_link"
+        self.pepper_marker_base.color.r = 0.0
+        self.pepper_marker_base.color.g = 1.0
+        self.pepper_marker_base.color.b = 0.0
+        self.pepper_marker_base.color.a = 1.0
+        self.pepper_marker_base.scale.x = 0.02
+        self.pepper_marker_base.scale.y = 0.02
 
         self.go_straight = False
 
+        self.tfBuffer = tf2_ros.Buffer()
+        self.listener = tf2_ros.TransformListener(self.tfBuffer)
+
         # Define the RealSense image subscriber
         self.camera_info_sub = rospy.Subscriber("/camera/color/camera_info", CameraInfo, self.camera_info_callback)
-        self.peduncle_marker_publisher = rospy.Publisher("/visualization_peduncle_marker", Marker, queue_size=1)
-        self.pepper_marker_publisher = rospy.Publisher("/visualization_pepper_marker", Marker, queue_size=1)
+
+        self.peduncle_marker_rs_pub = rospy.Publisher("/visualization_peduncle_marker_rs", Marker, queue_size=1)
+        self.peduncle_marker_base_pub = rospy.Publisher("/visualization_peduncle_marker_base", Marker, queue_size=1)
+
+        self.pepper_marker_rs_pub = rospy.Publisher("/visualization_pepper_marker_rs", Marker, queue_size=1)
+        self.pepper_marker_base_pub = rospy.Publisher("/visualization_pepper_marker_base", Marker, queue_size=1)
 
         self.depth_subscriber = rospy.Subscriber(
             '/camera/depth/image_rect_raw', Image, self.depth_callback, queue_size=1)
@@ -129,8 +158,10 @@ class PerceptionNode:
         self.peduncle_center.y = -1 # self.img_height/2
         self.peduncle_center.z = 0
 
-        self.pepper_marker.points = []
-        self.peduncle_marker.points = []
+        self.pepper_marker_rs.points = []
+        self.pepper_marker_base.points = []
+        self.peduncle_marker_rs.points = []
+        self.peduncle_marker_base.points = []
 
         result = results_both[0] # only take the first image because there is only one image
 
@@ -158,10 +189,17 @@ class PerceptionNode:
                     # X, Y, Z in RS frame
                     X, Y, Z = self.get_3D_coords(
                         self.pepper_center.x, self.pepper_center.y, self.pepper_center.z)
+                    
+                    self.pepper_marker_rs.points.append(Point(X, Y, Z))
+                    self.pepper_marker_rs.header.stamp = rospy.Time.now()
+                    self.pepper_marker_rs_pub.publish(self.pepper_marker_rs)
 
-                    self.pepper_marker.points.append(Point(X, Y, Z))
-                    self.pepper_marker.header.stamp = rospy.Time.now()
-                    self.pepper_marker_publisher.publish(self.pepper_marker)
+                    # X, Y, Z in base frame
+                    X_b, Y_b, Z_b = self.transform_to_base_frame(X, Y, Z)
+
+                    self.pepper_marker_base.points.append(Point(X_b, Y_b, Z_b))
+                    self.pepper_marker_base.header.stamp = rospy.Time.now()
+                    self.pepper_marker_base_pub.publish(self.pepper_marker_base)
 
                     self.last_pepper_center = self.pepper_center
 
@@ -185,9 +223,16 @@ class PerceptionNode:
                     X, Y, Z = self.get_3D_coords(
                         self.peduncle_center.x, self.peduncle_center.y, self.peduncle_center.z)
 
-                    self.peduncle_marker.points.append(Point(X, Y, Z))
-                    self.peduncle_marker.header.stamp = rospy.Time.now()
-                    self.peduncle_marker_publisher.publish(self.peduncle_marker)
+                    self.peduncle_marker_rs.points.append(Point(X, Y, Z))
+                    self.peduncle_marker_rs.header.stamp = rospy.Time.now()
+                    self.peduncle_marker_rs_pub.publish(self.peduncle_marker_rs)
+
+                    # Base frame
+                    X_b, Y_b, Z_b = self.transform_to_base_frame(X, Y, Z)
+
+                    self.peduncle_marker_base.points.append(Point(X_b, Y_b, Z_b))
+                    self.peduncle_marker_base.header.stamp = rospy.Time.now()
+                    self.peduncle_marker_base_pub.publish(self.peduncle_marker_base)
 
                     self.box_size = (box[2] - box[0]) * (box[3] - box[1])
 
@@ -260,6 +305,28 @@ class PerceptionNode:
         X = (x - self.camera_matrix[0, 2]) * Z / self.camera_matrix[0, 0]
         Y = (y - self.camera_matrix[1, 2]) * Z / self.camera_matrix[1, 1]
         return X, Y, Z
+    
+    def transform_to_base_frame(self, X, Y, Z):
+        # Get transform
+        try:
+
+            transformation = self.tfBuffer.lookup_transform("base_link", "camera_color_optical_frame", rospy.Time(), rospy.Duration(0.1))
+
+            # Get translation and rotation
+            trans, quat = transformation.transform.translation, transformation.transform.rotation
+
+            # Create homogeneous matrix
+            homo_matrix = np.asarray(quaternion_matrix([quat.x, quat.y, quat.z, quat.w]))
+            homo_matrix[:3, 3] = np.array([trans.x, trans.y, trans.z])
+
+            # Transform to base frame
+            point_camera_frame = np.array([X, Y, Z, 1])
+            point_base_frame = np.matmul(homo_matrix, point_camera_frame) 
+
+            return point_base_frame[0], point_base_frame[1], point_base_frame[2]
+        
+        except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
+            print("Error getting the transform")
 
 
 if __name__ == '__main__':

@@ -51,7 +51,7 @@ class PerceptionNode:
         # Make marker for visualization
         self.peduncle_marker_rs = Marker()
         self.peduncle_marker_rs.type = 8
-        self.peduncle_marker_rs.header.frame_id = "camera_color_optical_frame"
+        self.peduncle_marker_rs.header.frame_id = "realsense_frame"
         self.peduncle_marker_rs.color.r = 0.0
         self.peduncle_marker_rs.color.g = 0.0
         self.peduncle_marker_rs.color.b = 1.0
@@ -71,7 +71,7 @@ class PerceptionNode:
 
         self.pepper_marker_rs = Marker()
         self.pepper_marker_rs.type = 8
-        self.pepper_marker_rs.header.frame_id = "camera_color_optical_frame"
+        self.pepper_marker_rs.header.frame_id = "realsense_frame"
         self.pepper_marker_rs.color.r = 1.0
         self.pepper_marker_rs.color.g = 0.0
         self.pepper_marker_rs.color.b = 0.0
@@ -310,7 +310,7 @@ class PerceptionNode:
         # Get transform
         try:
 
-            transformation = self.tfBuffer.lookup_transform("base_link", "camera_color_optical_frame", rospy.Time(), rospy.Duration(0.1))
+            transformation = self.tfBuffer.lookup_transform("base_link", "realsense_frame", rospy.Time(), rospy.Duration(0.1))
 
             # Get translation and rotation
             trans, quat = transformation.transform.translation, transformation.transform.rotation

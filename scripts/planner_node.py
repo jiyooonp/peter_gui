@@ -4,7 +4,7 @@ import rospy
 import math
 from sensor_msgs.msg import Joy
 from std_msgs.msg import Int16, Bool
-from geometry_msgs.msg import Twist
+from geometry_msgs.msg import Twist, Point
 from xarm_msgs.msg import RobotMsg
 from manipulator import Manipulator
 from ag_gripper_driver.srv import Pegasus, PegasusResponse
@@ -24,6 +24,7 @@ class PlannerNode:
         self.joy_state = Joy()
         self.fake_joy = Joy()
         self.visual_servoing_state = Twist()
+        self.poi = None
         # self.manipulator = Manipulator()
 
         # initial fake joy values
@@ -42,7 +43,8 @@ class PlannerNode:
         self.state_sub = rospy.Subscriber('/state', Int16, self.state_callback, queue_size=1) # state message
         self.joystick_sub = rospy.Subscriber('/joy', Joy, self.joystick_callback, queue_size=1) # joystick message        
         self.visual_servoing_sub = rospy.Subscriber('/cmd_vel', Twist, self.visual_servo, queue_size=1) # visual servoing messages
-        
+        self.poi_sub = rospy.Subscriber('/poi', Point, self.poi_callback, queue_size=1) # visual servoing messages
+
         # publishers
         self.joy_pub = rospy.Publisher('/joy_relay', Joy, queue_size=1) # joystick commands pub
         self.planner_state_pub = rospy.Publisher('/planner_state', Int16, queue_size=1) # planner state pub
@@ -61,6 +63,11 @@ class PlannerNode:
         """Callback for joystick message"""
         # update joy state
         self.joy_state = data
+
+    def poi_callback(self, data):
+        """Callback for POI message"""
+        # update joy state
+        self.poi = data
 
     def discretize(self, val):
         """discretize arm teleop value"""
@@ -169,26 +176,34 @@ class PlannerNode:
                 rospy.loginfo("ERROR: UNABLE TO INITIALIZE AUTONOMOUS PROCEDURE")
                 self.state_pub.publish(10)
             
-        # visual servo to 10 cm in front of plant
+        # move to pre-grasp
         elif self.state == 5:
-            self.joy_pub.publish(self.fake_joy) 
-            rospy.loginfo("Plan Execution: Visual Servoing Complete")
+            try:
+                xarm = Manipulator()
+                if self.poi:
+                    xarm.moveToPoi(self.poi.x, self.poi.y, self.poi.z)
+                else:
+                    rospy.loginfo("NO POI DETCTED YET!!!")
+                rospy.sleep(.1)
+                xarm.disconnect()
+                rospy.sleep(.1)
+                self.planner_state_pub.publish(5)
+            except:
+                rospy.loginfo("ERROR: UNABLE TO MOVE TO PREGRASP POSITION")
+                self.state_pub.publish(10)
 
-            #TODO: NEED TO DETERMINE END CONDITION HERE
-            self.planner_state_pub.publish(5)
-
-        # move to pregrasp position: open ee and place ee at cut/grip position
+        # move to poi: open ee and place ee at cut/grip position
         elif self.state == 6:
             try:
                 xarm = Manipulator()
-                xarm.cartesianMove(0.1)
+                xarm.cartesianMove(0.15)
                 rospy.sleep(.1)
                 xarm.disconnect()
                 rospy.sleep(.1)
                 rospy.loginfo("Plan Execution: Move to Pregrasp Complete")
                 self.planner_state_pub.publish(6)
             except:
-                rospy.loginfo("ERROR: UNABLE TO MOVE TO PREGRASP POSITION")
+                rospy.loginfo("ERROR: UNABLE TO MOVE TO POI")
                 self.state_pub.publish(10)
 
         # harvest pepper
@@ -204,7 +219,7 @@ class PlannerNode:
                 rospy.sleep(.1)
                 
                 xarm = Manipulator()
-                xarm.moveToBasket(0.1)
+                xarm.moveToBasket(0.15)
                 rospy.sleep(.1)
                 xarm.disconnect()
                 rospy.sleep(.1)

@@ -12,8 +12,9 @@ class Manipulator:
 
     def __init__(self):
         # initialize values
-        # self.ip = rospy.get_param('/xarm/xarm_robot_ip')
-        self.ip = '192.168.1.214'
+        self.ip = rospy.get_param('xarm_robot_ip')
+        # self.ip = '192.168.1.214'
+        self.pregrasp_offset = 0.15
         # self.init_pose = rospy.get_param('/init_pose')
         # self.basket_pose = rospy.get_param('/basket_pose')
         # todo: put these in launch file
@@ -45,6 +46,11 @@ class Manipulator:
         x,y,z,roll,pitch,yaw = self.arm.get_position()[1]
         print("Executing cartesian move")
         self.arm.set_position(x+dist, y, z, roll, pitch, yaw, wait=True) # todo: test out relative=True
+
+    def moveToPoi(self,x,y,z):
+        x -= self.pregrasp_offset # pregrasp offset
+        x -= 0.15 # ee length
+        self.arm.set_position(x,y,z,87.280666, -44.962863, 84.593953, wait=True)
 
     def test(self):
         print("TESTING")

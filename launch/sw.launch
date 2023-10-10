@@ -26,7 +26,7 @@
   <!-- perception node-->
   <node pkg="perception_refactor"  name="perception_node" type="perception_node.py"></node>
 
-  <!-- manipulation node-->
+  <!-- manipulation node -->
   <node pkg="perception_refactor"  name="manipulator" type="manipulator.py"></node>
 
 </launch>

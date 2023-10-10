@@ -13,7 +13,7 @@ class Manipulator:
     def __init__(self):
         # initialize values
         # self.ip = rospy.get_param('/xarm/xarm_robot_ip')
-        self.ip = '192.168.1.214'
+        self.ip = '192.168.1.213'
         # self.init_pose = rospy.get_param('/init_pose')
         # self.basket_pose = rospy.get_param('/basket_pose')
         # todo: put these in launch file
@@ -46,11 +46,14 @@ class Manipulator:
         print("Executing cartesian move")
         self.arm.set_position(x+dist, y, z, roll, pitch, yaw, wait=True) # todo: test out relative=True
 
-    # def test(self):
-    #     print("TESTING")
-    #     self.moveToInit()
-    #     # self.moveToBasket(0.05)
-    #     return
+    def test(self):
+        print("TESTING")
+        self.moveToInit()
+        self.moveToBasket(0.05)
+        return
+    
+    def disconnect(self):
+        self.arm.disconnect()
 
 
 if __name__ == '__main__':

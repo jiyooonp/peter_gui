@@ -24,7 +24,7 @@ class PlannerNode:
         self.joy_state = Joy()
         self.fake_joy = Joy()
         self.visual_servoing_state = Twist()
-        self.manipulator = Manipulator()
+        # self.manipulator = Manipulator()
 
         # initial fake joy values
         self.fake_joy.header.frame_id = "/dev/input/js0"
@@ -156,12 +156,19 @@ class PlannerNode:
         # ----- Initializing Autonomous Procedure -----
         # move to init position 
         elif self.state == 4:
-            self.manipulator.moveToInit()
-            # rospy.sleep(5)
-            rospy.loginfo("Plan Execution: Initalization Complete")
+            try:
+                xarm = Manipulator()
+                xarm.moveToInit()
+                rospy.sleep(.1)
+                xarm.disconnect()
+                rospy.sleep(.1)
+                self.send_to_ee("open")
+                rospy.loginfo("Plan Execution: Initalization Complete")
+                self.planner_state_pub.publish(4)
+            except:
+                rospy.loginfo("ERROR: UNABLE TO INITIALIZE AUTONOMOUS PROCEDURE")
+                self.state_pub.publish(10)
             
-            self.planner_state_pub.publish(4) ##last completed plan
-
         # visual servo to 10 cm in front of plant
         elif self.state == 5:
             self.joy_pub.publish(self.fake_joy) 
@@ -172,23 +179,42 @@ class PlannerNode:
 
         # move to pregrasp position: open ee and place ee at cut/grip position
         elif self.state == 6:
-            # self.send_to_ee("open")
-            self.manipulator.cartesianMove(0.1)
-            # rospy.sleep(5)
-            self.planner_state_pub.publish(6)
+            try:
+                xarm = Manipulator()
+                xarm.cartesianMove(0.1)
+                rospy.sleep(.1)
+                xarm.disconnect()
+                rospy.sleep(.1)
+                rospy.loginfo("Plan Execution: Move to Pregrasp Complete")
+                self.planner_state_pub.publish(6)
+            except:
+                rospy.loginfo("ERROR: UNABLE TO MOVE TO PREGRASP POSITION")
+                self.state_pub.publish(10)
 
         # harvest pepper
         elif self.state == 7:
-            # self.send_to_ee("harvest")
+            self.send_to_ee("harvest")
+            rospy.sleep(5) #fake harvest
             self.planner_state_pub.publish(7)
 
         # move to basket and drop
         elif self.state == 8:
-            self.manipulator.moveToBasket(0.1)
-            # rospy.sleep(5)
-            # self.send_to_ee("open")
-            self.manipulator.moveToInit()
-            self.planner_state_pub.publish(8)
+            # self.manipulator.moveToBasket(0.1)
+            try:
+                rospy.sleep(.1)
+                
+                xarm = Manipulator()
+                xarm.moveToBasket(0.1)
+                rospy.sleep(.1)
+                xarm.disconnect()
+                rospy.sleep(.1)
+                rospy.loginfo("Plan Execution: Move to Basket Complete")
+                self.send_to_ee("open")
+                rospy.sleep(5) #fake drop
+                self.planner_state_pub.publish(8)
+            except:
+                rospy.loginfo("ERROR: UNABLE TO MOVE TO BASKET")
+                self.state_pub.publish(10)
 
         else:
             rospy.loginfo("ERROR: UNRECOGNIZED STATE IN PLANNER NODE")

@@ -1,0 +1,24 @@
+## transforms needed for the camera mount tiled to 25 deg
+
+
+# rotate around wrists z+ 45
+Hwrist_rot45:
+  [[-0.7071, 0.7071,   0, 0], # approx cos45, sin45
+   [-0.7071,-0.7071,   0, 0],
+   [     0,       0,   1, 0],
+   [     0,       0,   0, 1]]
+
+# translate to real sense frame
+Hrot45_real:
+  [[        1,   0,          0, 0],
+   [        0,   1,          0, 0],
+   [        0,   0,          1, 0],
+   [ 0.054785,   0,   0.105262, 1]] # in m
+
+# tilt down by 25
+Hreal_rot25:
+  [[ 0.906307, 0, 0.422618, 0], # approx cos25, sin25
+   [        0, 1,        0, 0],
+   [-0.422618, 0, 0.906307, 0],
+   [        0, 0, 0       , 1]] # in m
+

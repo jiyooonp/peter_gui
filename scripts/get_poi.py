@@ -3,6 +3,8 @@ from PIL import Image, ImageDraw
 from scipy.integrate import quad
 from scipy.optimize import curve_fit
 from skimage.morphology import medial_axis
+from typing import List, Optional
+
 
 class Curve:
 
@@ -181,24 +183,117 @@ class PepperPeduncle:
 
         return self._poi_px
 
-'''
-Speed: 1.0ms preprocess, 33.6ms inference, 3.0ms postprocess per image at shape (1, 3, 640, 640)
-[ERROR] [1695763655.042531]: bad callback: <bound method PerceptionNode.image_callback of <__main__.PerceptionNode object at 0x7f622e574f10>>
-Traceback (most recent call last):
-  File "/opt/ros/noetic/lib/python3/dist-packages/rospy/topics.py", line 750, in _invoke_callback
-    cb(msg)
-  File "/home/sridevi/Documents/iowa_ws/src/ISU_Demo_Perception/scripts/perception.py", line 105, in image_callback
-    _ = self.run_yolo(cv_image)
-  File "/home/sridevi/Documents/iowa_ws/src/ISU_Demo_Perception/scripts/perception.py", line 181, in run_yolo
-    poi_x, poi_y = peduncle.set_point_of_interaction()
-  File "/home/sridevi/Documents/iowa_ws/src/ISU_Demo_Perception/scripts/get_poi.py", line 178, in set_point_of_interaction
-    self._curve.fit_curve_to_mask(self._mask)
-  File "/home/sridevi/Documents/iowa_ws/src/ISU_Demo_Perception/scripts/get_poi.py", line 73, in fit_curve_to_mask
-    medial_img, _ = medial_axis(mask, return_distance=True)
-  File "/home/sridevi/.local/lib/python3.8/site-packages/skimage/morphology/_skeletonize.py", line 473, in medial_axis
-    corner_score = _table_lookup(masked_image, cornerness_table)
-  File "/home/sridevi/.local/lib/python3.8/site-packages/skimage/morphology/_skeletonize.py", line 551, in _table_lookup
-    if image.shape[0] < 3 or image.shape[1] < 3:
-IndexError: tuple index out of range
 
-'''
+
+class PepperFruit:
+    def __init__(self, number:int, xywh=None, conf=0.0):
+        self._number: int = number
+
+        self._xywh: Optional[List[float]] = xywh # TODO: change to xyxy
+        self._conf: float = conf
+        self._xyz = None
+        self._true_positive: bool = False
+        self._occurences: int = 1
+        self._associated_fruits: List[(int, PepperFruit)] = list()
+        self._parent_pepper: int = None
+
+    @property
+    def number(self):
+        return self._number
+
+    @property
+    def xywh(self):
+        return self._xywh
+
+    @xywh.setter
+    def xywh(self, xywh):
+        self._xywh = xywh
+
+    @property
+    def conf(self):
+        return self._conf
+
+    @conf.setter
+    def conf(self, conf):
+        self._conf = conf
+
+    @property
+    def xyz(self):
+        return self._xyz
+    
+    @xyz.setter
+    def xyz(self, xyz):
+        self._xyz = xyz
+
+    @property
+    def true_positive(self):
+        return self._true_positive
+    
+    @true_positive.setter
+    def true_positive(self, true_positive):
+        self._true_positive = true_positive
+
+    @property
+    def occurences(self):
+        return self._occurences
+    
+    @occurences.setter
+    def occurences(self, occurences):
+        self._occurences = occurences
+
+    @property
+    def parent_pepper(self):
+        return self._parent_pepper
+    
+    @parent_pepper.setter
+    def parent_pepper(self, parent_pepper):
+        self._parent_pepper = parent_pepper
+
+    @property
+    def associated_fruits(self):
+        return self._associated_fruits
+    
+    def add_associated_fruit(self, frame_number, fruit):
+        self._associated_fruits.append((frame_number, fruit))
+
+    def __str__(self):
+        return f"Pepper(number={self.number}, xywh={self.xywh}, conf={self._conf})"
+    
+
+class Pepper:
+    def __init__(self, number: int, pf_number: int, pp_number: int):
+        self._number = number
+        self._order: int = -1
+        self._pepper_fruit: PepperFruit = PepperFruit(pf_number)
+        self._pepper_peduncle: PepperPeduncle = PepperPeduncle(pp_number)
+
+    @property
+    def number(self):
+        return self._number
+
+    @property
+    def order(self):
+        return self._order
+
+    @order.setter
+    def order(self, order):
+        self._order = order
+
+    @property
+    def pepper_fruit(self):
+        return self._pepper_fruit
+
+    @pepper_fruit.setter
+    def pepper_fruit(self, value):
+        self._pepper_fruit = value
+
+    @property
+    def pepper_peduncle(self):
+        return self._pepper_peduncle
+
+    @pepper_peduncle.setter
+    def pepper_peduncle(self, value):
+        self._pepper_peduncle = value
+
+    def __str__(self):
+        return f"Pepper #{self.number}"

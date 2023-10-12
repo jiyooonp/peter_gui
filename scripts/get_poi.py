@@ -87,6 +87,7 @@ class Curve:
             self._parabola_direction = 'vertical'
             self._params = params1
 
+            # TODO add full code
             # Sorted assuming that the pepper to the left of the peduncle
             # Sorting with respect to y in ascending order
             sorted_x = np.array([x for _, x in sorted(zip(y, x))])
@@ -98,6 +99,7 @@ class Curve:
             self._parabola_direction = 'horizontal'
             self._params = params2
         
+            # TODO add full code
             # Sorted assuming that the pepper is above the peduncle
             # Sorted with respect to x in ascending order
             sorted_x = np.array([x for x, _ in sorted(zip(x, y))])

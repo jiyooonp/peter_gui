@@ -84,9 +84,9 @@ def match_pepper_fruit_peduncle(pepper_fruit_detections: Dict[int, PepperFruit],
             dist = distance_between_pepper_fruit_peduncle(pepper_fruit, pepper_peduncle)
 
             x, y, w, h = pepper_fruit.xywh
-            box1 = [[x - w / 2, y - h / 2], [x + w / 2, y - h / 2], [x + w / 2, y + h / 2], [x - w / 2, y + h / 2]]
+            box1 = [[x - h / 2, y - w / 2], [x + h / 2, y - w / 2], [x + h / 2, y + w / 2], [x - h / 2, y + w / 2]]
             x, y, w, h = pepper_peduncle.xywh
-            box2 = [[x - w / 2, y - h / 2], [x + w / 2, y - h / 2], [x + w / 2, y + h / 2], [x - w / 2, y + h / 2]]
+            box2 = [[x - h / 2, y - w / 2], [x + h / 2, y - w / 2], [x + h / 2, y + w / 2], [x - h / 2, y + w / 2]]
 
             iou = calculate_iou(box1, box2)
 

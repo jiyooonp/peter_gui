@@ -54,8 +54,14 @@ class PerceptionNode:
             package_path+'/weights/levelb_1.pt')
         
         # Make marker for visualization
-        self.peduncle_marker = self.make_marker()
-        self.pepper_marker = self.make_marker()
+
+        self.peduncle_marker_rs =  self.make_marker(frame_id="camera_color_optical_frame")
+
+        self.peduncle_marker_base =  self.make_marker(marker_type=8, frame_id='link_base', r= 1, g=0, b=1, a=1, x=0.02, y=0.01)
+
+        self.pepper_marker_rs =  self.make_marker(marker_type=8, frame_id='camera_color_optical_frame', r= 1, g=0, b=0, a=1, x=0.05, y=0.05)
+
+        self.pepper_marker_base =  self.make_marker(marker_type=8, frame_id='link_base', r= 0, g=1, b=0, a=1, x=0.06, y=0.06)
 
         self.go_straight = False
 
@@ -239,11 +245,11 @@ class PerceptionNode:
                     self.peduncle_marker_rs_pub.publish(self.peduncle_marker_rs)
 
                     # Base frame
-                    X_b, Y_b, Z_b = self.transform_to_base_frame(X, Y, Z)
+                    # X_b, Y_b, Z_b = self.transform_to_base_frame(X, Y, Z)
 
-                    self.peduncle_marker_base.points.append(Point(X_b, Y_b, Z_b))
-                    self.peduncle_marker_base.header.stamp = rospy.Time.now()
-                    self.peduncle_marker_base_pub.publish(self.peduncle_marker_base)
+                    # self.peduncle_marker_base.points.append(Point(X_b, Y_b, Z_b))
+                    # self.peduncle_marker_base.header.stamp = rospy.Time.now()
+                    # self.peduncle_marker_base_pub.publish(self.peduncle_marker_base)
 
                     self.box_size = (box[2] - box[0]) * (box[3] - box[1])
 

@@ -202,11 +202,11 @@ class PerceptionNode:
                     self.peduncle_detections[peduncle_count] = peduncle_detection
                     peduncle_count += 1
                                         
-                    image = self.visualize_result(image, segment)
-
                     # These are in NumPy axes
                     self.peduncle_center.x = poi_x
                     self.peduncle_center.y = poi_y
+                
+                    image = self.visualize_result(image, segment, self.peduncle_center)
 
                     self.peduncle_center.z = 0 # self.get_depth(int(self.peduncle_center.x), int(self.peduncle_center.y))
                     
@@ -303,9 +303,11 @@ class PerceptionNode:
         Y = (y - self.camera_matrix[1, 2]) * Z / self.camera_matrix[1, 1]
         return X, Y, Z
     
-    def visualize_result(self, image, segment, color=(100, 0, 125, 0.1)):
+    def visualize_result(self, image, segment, poi=None, color=(100, 0, 125, 0.1)):
         mask_coords = (segment @ np.array([[self.img_width, 0], [0, self.img_height]])).astype(int)
         image = cv2.fillPoly(image, pts=[mask_coords], color=color)
+        if poi is not None:
+            image = cv2.circle(image, (int(poi.y), int(poi.x)), 5, (0, 0, 255), -1)
         return image
     def make_marker(self, marker_type=8, frame_id='camera_color_optical_frame', r= 1, g=0, b=0, a=1, x=0.05, y=0.05):
         marker = Marker()

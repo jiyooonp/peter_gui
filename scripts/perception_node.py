@@ -35,8 +35,8 @@ class PerceptionNode:
         self.bridge = CvBridge()
         self.depth_window = 2  # 5 x 5 window (i-2 to i+2)
         self.camera_matrix = None
-        self.img_width = None
-        self.img_height = None
+        self.img_width = 640
+        self.img_height = 480
 
         curr_path = os.getcwd()
 
@@ -202,16 +202,16 @@ class PerceptionNode:
                     self.pepper_marker_rs_pub.publish(self.pepper_marker_rs)
 
                     # X, Y, Z in base frame
-                    X_b, Y_b, Z_b = self.transform_to_base_frame(X, Y, Z)
+                    # X_b, Y_b, Z_b = self.transform_to_base_frame(X, Y, Z)
 
-                    self.pepper_marker_base.points.append(Point(X_b, Y_b, Z_b))
-                    self.pepper_marker_base.header.stamp = rospy.Time.now()
-                    self.pepper_marker_base_pub.publish(self.pepper_marker_base)
+                    # self.pepper_marker_base.points.append(Point(X_b, Y_b, Z_b))
+                    # self.pepper_marker_base.header.stamp = rospy.Time.now()
+                    # self.pepper_marker_base_pub.publish(self.pepper_marker_base)
 
-                    if self.state != 5:
-                        self.poi.x = X_b
-                        self.poi.y = Y_b
-                        self.poi.z = Z_b
+                    # if self.state != 5:
+                    #     self.poi.x = X_b
+                    #     self.poi.y = Y_b
+                    #     self.poi.z = Z_b
 
                     self.last_pepper_center = self.pepper_center
 

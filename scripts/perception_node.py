@@ -25,6 +25,7 @@ from shapely import Polygon
 
 import os
 import io
+import random
 
 from get_poi import PepperPeduncle, PepperFruit, Pepper
 from match_peppers_util import match_pepper_fruit_peduncle
@@ -54,13 +55,9 @@ class PerceptionNode:
             package_path+'/weights/levelb_1.pt')
         
         # Make marker for visualization
-
         self.peduncle_marker_rs =  self.make_marker(frame_id="camera_color_optical_frame")
-
         self.peduncle_marker_base =  self.make_marker(marker_type=8, frame_id='link_base', r= 1, g=0, b=1, a=1, x=0.02, y=0.01)
-
         self.pepper_marker_rs =  self.make_marker(marker_type=8, frame_id='camera_color_optical_frame', r= 1, g=0, b=0, a=1, x=0.05, y=0.05)
-
         self.pepper_marker_base =  self.make_marker(marker_type=8, frame_id='link_base', r= 0, g=1, b=0, a=1, x=0.06, y=0.06)
 
         self.go_straight = False
@@ -142,7 +139,20 @@ class PerceptionNode:
                 self.fruit_detections = dict()
                 self.peduncle_detections = dict()
                 print("pepper_fruit_peduncle_match\n",self.pepper_detections)
+                image = cv_image
+                if self.pepper_detections != dict():
+                    for i, pepper in self.pepper_detections.items():
+                        rand_color = self.random_color()
+                        image = self.visualize_result(cv_image, pepper.pepper_fruit.segment, color=rand_color)
+                        image = self.visualize_result(cv_image, pepper.pepper_peduncle.segment, color=rand_color)
+                try:
+                    image_msg_bb = self.bridge.cv2_to_imgmsg(image, "rgb8")
+                    self.image_publisher.publish(image_msg_bb)
 
+                except cv_bridge.CvBridgeError as e:
+                    rospy.logerr(
+                        "Error converting back to image message: {}".format(e))
+                self.pepper_detections = dict()
         except cv_bridge.CvBridgeError as e:
             rospy.logerr("Error converting from image message: {}".format(e))
             return
@@ -178,14 +188,14 @@ class PerceptionNode:
                 mask = result.masks.masks[i]       # mask with 1s and 0s
                 box = result.boxes.xyxy[i]  
                 cls = result.boxes.cls[i] # 0 is pepper, 1 is peduncle
-
+                # image = self.visualize_result(image, segment)
                 if cls == 0: # it is a pepper
-                    pepper_detection = PepperFruit(self.fruit_count)
+                    pepper_detection = PepperFruit(self.fruit_count, segment=segment)
                     xywh = result.boxes.xywh # TODO change (this is just a placeholder)
                     pepper_detection.xywh = xywh[0].cpu().numpy()
                     self.fruit_detections[self.fruit_count] = pepper_detection
                     self.fruit_count+= 1
-                    image = self.visualize_result(image, segment)
+                    # image = self.visualize_result(image, segment)
                     
 
                     # These are in RealSense coordinate system
@@ -221,14 +231,14 @@ class PerceptionNode:
 
                 else: # it is a peduncle
                     
-                    peduncle_detection = PepperPeduncle(self.peduncle_count, np.array(mask.cpu()))
+                    peduncle_detection = PepperPeduncle(self.peduncle_count, np.array(mask.cpu()), segment=segment)
                     peduncle_detection.xywh = result.boxes.xywh[i].cpu().numpy()
                     poi_x, poi_y = peduncle_detection.set_point_of_interaction()
 
                     self.peduncle_detections[peduncle_count] = peduncle_detection
                     peduncle_count += 1
                                         
-                    image = self.visualize_result(image, segment)
+                    # image = self.visualize_result(image, segment)
 
                     # These are in RealSense coordinate system
                     self.peduncle_center.x = poi_y
@@ -280,14 +290,14 @@ class PerceptionNode:
         self.peduncle_center_publisher.publish(self.peduncle_center)
 
 
-        try:
-            image_msg_bb = self.bridge.cv2_to_imgmsg(image, "rgb8")
-            self.image_publisher.publish(image_msg_bb)
+        # try:
+        #     image_msg_bb = self.bridge.cv2_to_imgmsg(image, "rgb8")
+        #     self.image_publisher.publish(image_msg_bb)
 
-        except cv_bridge.CvBridgeError as e:
-            rospy.logerr(
-                "Error converting back to image message: {}".format(e))
-            return
+        # except cv_bridge.CvBridgeError as e:
+        #     rospy.logerr(
+        #         "Error converting back to image message: {}".format(e))
+        #     return
 
         return image
 
@@ -369,6 +379,12 @@ class PerceptionNode:
         marker.scale.x = x
         marker.scale.y = y
         return marker
+    def random_color(self):
+        r = random.randint(0, 255)
+        g = random.randint(0, 255)
+        b = random.randint(0, 255)
+        a = random.random()  # returns a float between 0 and 1
+        return (r, g, b, a)
 
 if __name__ == '__main__':
     try:

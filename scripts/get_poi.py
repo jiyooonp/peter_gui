@@ -109,7 +109,7 @@ class Curve:
 
 class PepperPeduncle:
 
-    def __init__(self, number: int, mask=None, conf=None, percentage=0.5):
+    def __init__(self, number: int, mask=None, conf=None, percentage=0.5, segment=None):
         self._number: int = number
         self._mask = mask
         self._conf: float = conf
@@ -117,6 +117,7 @@ class PepperPeduncle:
         self._xywh = None
         self._curve = Curve()
         self._poi_px = None
+        self.segment = segment
 
     @property
     def number(self):
@@ -186,7 +187,7 @@ class PepperPeduncle:
 
 
 class PepperFruit:
-    def __init__(self, number:int, xywh=None, conf=0.0):
+    def __init__(self, number:int, xywh=None, conf=0.0, segment=None):
         self._number: int = number
 
         self._xywh: Optional[List[float]] = xywh # TODO: change to xyxy
@@ -196,6 +197,7 @@ class PepperFruit:
         self._occurences: int = 1
         self._associated_fruits: List[(int, PepperFruit)] = list()
         self._parent_pepper: int = None
+        self.segment = segment
 
     @property
     def number(self):

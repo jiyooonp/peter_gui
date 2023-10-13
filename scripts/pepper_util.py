@@ -75,6 +75,10 @@ class Curve:
 
         x, y = np.where(medial_img == 1)
         
+        # Cannot call curve_fit if number of datapoints are less than 3
+        if x.shape[0] < 3:
+            return 0
+
         params1, _ = curve_fit(self.parabola, y, x)
         a, b, c = params1
         fit_curve_x = self.parabola(y, a, b, c)
@@ -107,6 +111,8 @@ class Curve:
             
             self._curve_x = sorted_x
             self._curve_y = self.parabola(sorted_x, self._params[0], self._params[1], self._params[2])
+
+        return 1
 
 
 class PepperPeduncle:
@@ -178,7 +184,11 @@ class PepperPeduncle:
 
 
     def set_point_of_interaction(self):
-        self._curve.fit_curve_to_mask(self._mask)
+        curve_available = self._curve.fit_curve_to_mask(self._mask)
+
+        if not curve_available:
+            return (-1, -1)
+        
         total_curve_length = self._curve.full_curve_length()
 
         poi_x_px, poi_y_px = self.determine_poi(total_curve_length)

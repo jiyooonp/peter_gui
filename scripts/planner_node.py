@@ -165,7 +165,7 @@ class PlannerNode:
         elif self.state == 4:
             try:
                 xarm = Manipulator()
-                xarm.moveToInit()
+                # xarm.moveToInit()
                 rospy.sleep(.1)
                 xarm.disconnect()
                 rospy.sleep(.1)
@@ -182,6 +182,8 @@ class PlannerNode:
                 print("in state 5")
                 xarm = Manipulator()
                 if self.poi:
+                    print("POI!!!!!!")
+                    print(self.poi)
                     xarm.moveToPoi(self.poi.x, self.poi.y, self.poi.z)
                 else:
                     rospy.logwarn("NO POI DETCTED YET!!!")

@@ -197,33 +197,33 @@ class PerceptionNode:
                     self.fruit_count+= 1
 
                     # These are in RealSense coordinate system
-                    self.pepper_center.x = int((box[0] + box[2]) / 2)
-                    self.pepper_center.y = int((box[1] + box[3]) / 2)
+                    self.pepper_center.x = int((box[1] + box[3]) / 2)
+                    self.pepper_center.y = int((box[0] + box[2]) / 2)
 
-                    self.peduncle_offset = int((box[3] - box[1]) / 3)
-                    self.pepper_center.x -= self.peduncle_offset
+                    # self.peduncle_offset = int((box[3] - box[1]) / 3)
+                    # self.pepper_center.x -= self.peduncle_offset
 
-                    self.pepper_center.z = 0 #self.get_depth(int(self.pepper_center.x), int(self.pepper_center.y))
+                    self.pepper_center.z = self.get_depth(int(self.pepper_center.x), int(self.pepper_center.y))
 
                     # X, Y, Z in RS frame
-                    # X, Y, Z = self.get_3D_coords(
-                    #     self.pepper_center.x, self.pepper_center.y, self.pepper_center.z)
+                    X, Y, Z = self.get_3D_coords(
+                        self.pepper_center.x, self.pepper_center.y, self.pepper_center.z)
                     
-                    # self.pepper_marker_rs.points.append(Point(X, Y, Z))
-                    # self.pepper_marker_rs.header.stamp = rospy.Time.now()
-                    # self.pepper_marker_rs_pub.publish(self.pepper_marker_rs)
+                    self.pepper_marker_rs.points.append(Point(X, Y, Z))
+                    self.pepper_marker_rs.header.stamp = rospy.Time.now()
+                    self.pepper_marker_rs_pub.publish(self.pepper_marker_rs)
 
                     # X, Y, Z in base frame
-                    # X_b, Y_b, Z_b = self.transform_to_base_frame(X, Y, Z)
+                    X_b, Y_b, Z_b = self.transform_to_base_frame(X, Y, Z)
 
-                    # self.pepper_marker_base.points.append(Point(X_b, Y_b, Z_b))
-                    # self.pepper_marker_base.header.stamp = rospy.Time.now()
-                    # self.pepper_marker_base_pub.publish(self.pepper_marker_base)
+                    self.pepper_marker_base.points.append(Point(X_b, Y_b, Z_b))
+                    self.pepper_marker_base.header.stamp = rospy.Time.now()
+                    self.pepper_marker_base_pub.publish(self.pepper_marker_base)
 
-                    # if self.state != 5:
-                    #     self.poi.x = X_b
-                    #     self.poi.y = Y_b
-                    #     self.poi.z = Z_b
+                    if self.state != 5:
+                        self.poi.x = X_b
+                        self.poi.y = Y_b
+                        self.poi.z = Z_b
 
                     self.last_pepper_center = self.pepper_center
 
@@ -238,6 +238,9 @@ class PerceptionNode:
                     peduncle_detection.xywh = xywh
                     poi_x, poi_y = peduncle_detection.set_point_of_interaction()
 
+                    if poi_x == -1 and poi_y == -1:
+                        continue
+
                     self.peduncle_detections[peduncle_count] = peduncle_detection
                     peduncle_count += 1
                                         
@@ -245,22 +248,22 @@ class PerceptionNode:
                     self.peduncle_center.x = poi_x
                     self.peduncle_center.y = poi_y
 
-                    self.peduncle_center.z = 0 # self.get_depth(int(self.peduncle_center.x), int(self.peduncle_center.y))
+                    self.peduncle_center.z = self.get_depth(int(self.peduncle_center.x), int(self.peduncle_center.y))
                     
                     # X, Y, Z in RS axes
-                    X, Y, Z = 0, 0, 0 #self.get_3D_coords(
-                        # self.peduncle_center.x, self.peduncle_center.y, self.peduncle_center.z)
+                    X, Y, Z = self.get_3D_coords(
+                        self.peduncle_center.x, self.peduncle_center.y, self.peduncle_center.z)
 
                     self.peduncle_marker_rs.points.append(Point(X, Y, Z))
                     self.peduncle_marker_rs.header.stamp = rospy.Time.now()
                     self.peduncle_marker_rs_pub.publish(self.peduncle_marker_rs)
 
                     # Base frame
-                    # X_b, Y_b, Z_b = self.transform_to_base_frame(X, Y, Z)
+                    X_b, Y_b, Z_b = self.transform_to_base_frame(X, Y, Z)
 
-                    # self.peduncle_marker_base.points.append(Point(X_b, Y_b, Z_b))
-                    # self.peduncle_marker_base.header.stamp = rospy.Time.now()
-                    # self.peduncle_marker_base_pub.publish(self.peduncle_marker_base)
+                    self.peduncle_marker_base.points.append(Point(X_b, Y_b, Z_b))
+                    self.peduncle_marker_base.header.stamp = rospy.Time.now()
+                    self.peduncle_marker_base_pub.publish(self.peduncle_marker_base)
 
                     self.box_size = (box[2] - box[0]) * (box[3] - box[1])
 

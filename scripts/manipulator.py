@@ -38,7 +38,6 @@ class Manipulator:
         self.cartesianMove(-dist) # move backwards so we don't hit the plant
         print("Moving to basket")
         self.arm.set_position(self.basket_pose[0], self.basket_pose[1], self.basket_pose[2], self.basket_pose[3], self.basket_pose[4], self.basket_pose[5], wait=True)    
-        # todo: need to test this approach: don't know if this is better or if it's better to only move the first joint
 
     def cartesianMove(self,dist):
         """cartesian move along x"""
@@ -55,8 +54,9 @@ class Manipulator:
 
         # add offsets
         x -= self.pregrasp_offset # pregrasp offset
-        x -= 0.15 # ee length
+        x -= 0.15 # ee length offset
 
+        # just using the orientation values from the init position for now
         self.arm.set_position(x,y,z,87.280666, -44.962863, 84.593953, wait=True, speed=20)
 
     def test(self):

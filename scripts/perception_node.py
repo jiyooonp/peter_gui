@@ -351,7 +351,7 @@ class PerceptionNode:
         mask_coords = (segment @ np.array([[self.img_width, 0], [0, self.img_height]])).astype(int)
         image = cv2.fillPoly(image, pts=[mask_coords], color=color)
         if poi is not None:
-            image = cv2.circle(image, (int(poi.y), int(poi.x)), 5, (0, 0, 255), -1)
+            image = cv2.circle(image, (int(poi[1]), int(poi[0])), 5, (0, 0, 255), -1)
         return image
     
     def make_marker(self, marker_type=8, frame_id='camera_color_optical_frame', r= 1, g=0, b=0, a=1, x=0.05, y=0.05):

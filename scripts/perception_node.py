@@ -45,7 +45,7 @@ class PerceptionNode:
 
         # Define the YOLO model
         self.yolo = YOLO(
-            package_path+'/weights/levelb_1.pt')
+            package_path+'/weights/levelb_2.pt')
         
         # Make marker for visualization
         self.peduncle_marker_rs =  self.make_marker(frame_id="camera_color_optical_frame")
@@ -144,10 +144,11 @@ class PerceptionNode:
                         "Error converting back to image message: {}".format(e))
                     
                 self.pepper_detections = dict()
-
+    
         except cv_bridge.CvBridgeError as e:
             rospy.logerr("Error converting from image message: {}".format(e))
             return
+        
 
     def run_yolo(self, image):
 
@@ -195,9 +196,9 @@ class PerceptionNode:
                     self.fruit_detections[self.fruit_count] = pepper_detection
                     self.fruit_count+= 1
 
-                    # These are in NumPy axes
-                    self.pepper_center.x = int((box[1] + box[3]) / 2)
-                    self.pepper_center.y = int((box[0] + box[2]) / 2)
+                    # These are in RealSense coordinate system
+                    self.pepper_center.x = int((box[0] + box[2]) / 2)
+                    self.pepper_center.y = int((box[1] + box[3]) / 2)
 
                     self.peduncle_offset = int((box[3] - box[1]) / 3)
                     self.pepper_center.x -= self.peduncle_offset
@@ -278,6 +279,15 @@ class PerceptionNode:
         self.poi_pub.publish(self.poi)
         self.pepper_center_pub.publish(self.pepper_center)
         self.peduncle_center_pub.publish(self.peduncle_center)
+
+        try:
+            image_msg_bb = self.bridge.cv2_to_imgmsg(image, "rgb8")
+            self.image_pub.publish(image_msg_bb)
+
+        except cv_bridge.CvBridgeError as e:
+            rospy.logerr(
+                "Error converting back to image message: {}".format(e))
+            return
 
     def depth_callback(self, msg):
         try:

@@ -97,4 +97,6 @@ def match_pepper_fruit_peduncle(pepper_fruit_detections: Dict[int, PepperFruit],
         pepper_fruit_peduncle_distances.append(((pepper_fruit.number, peduncle_match.number), min_dist))
 
     pepper_fruit_peduncle_match = remove_duplicate_peduncles(pepper_fruit_peduncle_distances)
+    if (pepper_fruit_peduncle_match):
+        print(pepper_fruit_peduncle_match)
     return pepper_fruit_peduncle_match

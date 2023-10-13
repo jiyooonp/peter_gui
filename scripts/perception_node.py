@@ -132,8 +132,8 @@ class PerceptionNode:
                 if self.pepper_detections != dict():
                     for i, pepper in self.pepper_detections.items():
                         rand_color = self.random_color()
-                        image = self.visualize_result(cv_image, pepper.pepper_fruit.segment, color=rand_color)
-                        image = self.visualize_result(cv_image, pepper.pepper_peduncle.segment, color=rand_color)
+                        image = self.visualize_result(cv_image, pepper.pepper_fruit.segment, poi=None, color=rand_color)
+                        image = self.visualize_result(cv_image, pepper.pepper_peduncle.segment, poi=pepper.pepper_peduncle.poi_px, color=rand_color)
 
                 try:
                     image_msg_bb = self.bridge.cv2_to_imgmsg(image, "rgb8")
@@ -184,17 +184,23 @@ class PerceptionNode:
 
                 if cls == 0: # it is a pepper
                     pepper_detection = PepperFruit(self.fruit_count, segment=segment)
-                    xywh = result.boxes.xywh # TODO change (this is just a placeholder)
-                    pepper_detection.xywh = xywh[0].cpu().numpy()
+
+                    # TODO change (this is just a placeholder)
+                    xywh = result.boxes.xywh 
+                    xywh = xywh[0].cpu().numpy()
+                    # Switch from YOLO axes to NumPy axes
+                    xywh[0], xywh[1] = xywh[1], xywh[0]
+
+                    pepper_detection.xywh = xywh
                     self.fruit_detections[self.fruit_count] = pepper_detection
                     self.fruit_count+= 1
 
-                    # These are in RealSense coordinate system
-                    self.pepper_center.x = int((box[0] + box[2]) / 2)
-                    self.pepper_center.y = int((box[1] + box[3]) / 2)
+                    # These are in NumPy axes
+                    self.pepper_center.x = int((box[1] + box[3]) / 2)
+                    self.pepper_center.y = int((box[0] + box[2]) / 2)
 
                     self.peduncle_offset = int((box[3] - box[1]) / 3)
-                    self.pepper_center.y -= self.peduncle_offset
+                    self.pepper_center.x -= self.peduncle_offset
 
                     self.pepper_center.z = 0 #self.get_depth(int(self.pepper_center.x), int(self.pepper_center.y))
 
@@ -222,20 +228,25 @@ class PerceptionNode:
 
                 else: # it is a peduncle
                     
+                    # TODO add pepper xywh
                     peduncle_detection = PepperPeduncle(self.peduncle_count, np.array(mask.cpu()), segment=segment)
-                    peduncle_detection.xywh = result.boxes.xywh[i].cpu().numpy()
+                    xywh = result.boxes.xywh[i].cpu().numpy()
+                    # Switch from YOLO axes to NumPy axes
+                    xywh[0], xywh[1] = xywh[1], xywh[0]
+
+                    peduncle_detection.xywh = xywh
                     poi_x, poi_y = peduncle_detection.set_point_of_interaction()
 
                     self.peduncle_detections[peduncle_count] = peduncle_detection
                     peduncle_count += 1
                                         
-                    # These are in RealSense coordinate system
-                    self.peduncle_center.x = poi_y
-                    self.peduncle_center.y = poi_x
+                    # These are in NumPy axes
+                    self.peduncle_center.x = poi_x
+                    self.peduncle_center.y = poi_y
 
                     self.peduncle_center.z = 0 # self.get_depth(int(self.peduncle_center.x), int(self.peduncle_center.y))
                     
-                    # RS frame
+                    # X, Y, Z in RS axes
                     X, Y, Z = 0, 0, 0 #self.get_3D_coords(
                         # self.peduncle_center.x, self.peduncle_center.y, self.peduncle_center.z)
 
@@ -258,10 +269,10 @@ class PerceptionNode:
             # TODO probably don't need this anymore 
             self.detection_void_count += 1
             if self.detection_void_count > 100:
-                self.peduncle_center.x = self.last_peduncle_center.x
-                self.peduncle_center.y = 240
-                self.pepper_center.x = self.last_pepper_center.x
-                self.pepper_center.y = 240
+                self.peduncle_center.y = self.last_peduncle_center.y
+                self.peduncle_center.x = 240
+                self.pepper_center.y = self.last_pepper_center.y
+                self.pepper_center.x = 240
                 self.detection_void_count = 0
 
         self.poi_pub.publish(self.poi)
@@ -277,12 +288,13 @@ class PerceptionNode:
             rospy.logerr("Error converting from depth image message: {}".format(e))
             
     def get_depth(self, x, y):
-        left_x = max(0, x - self.depth_window)
-        right_x = min(self.img_width, x + self.depth_window)
-        top_y = max(0, y - self.depth_window)
-        bottom_y = min(self.img_height, y + self.depth_window)
+        top_x = max(0, x - self.depth_window)
+        bottom_x = min(self.img_height, x + self.depth_window)
+    
+        left_y = max(0, y - self.depth_window)
+        right_y = min(self.img_width, y + self.depth_window)
 
-        depth_values = self.depth_image[top_y:bottom_y, left_x:right_x]
+        depth_values = self.depth_image[top_x:bottom_x, left_y:right_y]
         depth_values = depth_values.flatten()
         depth = 0.001*np.median(depth_values)
 
@@ -299,7 +311,13 @@ class PerceptionNode:
         self.camera_info_sub.unregister()
 
     def get_3D_coords(self, x, y, z):
-        # Get the 3D coordinates of the pixel in the RS frame? TODO
+        """
+        Input: NumPy frame: (x, y) pixels and z depth in meters
+        Output: RealSense frame: X, Y, Z coordinates in meters
+        """
+        # Switch from NumPy axes to RealSense axes
+        x, y = y, x
+
         Z = z
         X = (x - self.camera_matrix[0, 2]) * Z / self.camera_matrix[0, 0]
         Y = (y - self.camera_matrix[1, 2]) * Z / self.camera_matrix[1, 1]
@@ -329,9 +347,11 @@ class PerceptionNode:
     def state_callback(self, msg):
         self.state = msg.data
 
-    def visualize_result(self, image, segment, color=(100, 0, 125, 0.1)):
+    def visualize_result(self, image, segment, poi=None, color=(100, 0, 125, 0.1)):
         mask_coords = (segment @ np.array([[self.img_width, 0], [0, self.img_height]])).astype(int)
         image = cv2.fillPoly(image, pts=[mask_coords], color=color)
+        if poi is not None:
+            image = cv2.circle(image, (int(poi.y), int(poi.x)), 5, (0, 0, 255), -1)
         return image
     
     def make_marker(self, marker_type=8, frame_id='camera_color_optical_frame', r= 1, g=0, b=0, a=1, x=0.05, y=0.05):

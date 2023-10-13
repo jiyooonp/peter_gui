@@ -45,7 +45,7 @@ class PerceptionNode:
 
         # Define the YOLO model
         self.yolo = YOLO(
-            package_path+'/weights/both_1.pt')
+            package_path+'/weights/red.pt')
         
         # Make marker for visualization
         self.peduncle_marker_rs =  self.make_marker(frame_id="camera_color_optical_frame")

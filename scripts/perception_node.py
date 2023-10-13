@@ -30,11 +30,6 @@ import random
 from get_poi import PepperPeduncle, PepperFruit, Pepper
 from match_peppers_util import match_pepper_fruit_peduncle
 
-
-"""
-roslaunch realsense2_camera rs_aligned_depth.launch  filters:=pointcloud
-"""
-
 class PerceptionNode:
 
     def __init__(self):
@@ -60,43 +55,35 @@ class PerceptionNode:
         self.pepper_marker_rs =  self.make_marker(marker_type=8, frame_id='camera_color_optical_frame', r= 1, g=0, b=0, a=1, x=0.05, y=0.05)
         self.pepper_marker_base =  self.make_marker(marker_type=8, frame_id='link_base', r= 0, g=1, b=0, a=1, x=0.06, y=0.06)
 
-        self.go_straight = False
-
         self.tfBuffer = tf2_ros.Buffer()
         self.listener = tf2_ros.TransformListener(self.tfBuffer)
 
-        # Define the RealSense image subscriber
-        self.camera_info_sub = rospy.Subscriber("/camera/color/camera_info", CameraInfo, self.camera_info_callback)
-
+        # Publishers
         self.peduncle_marker_rs_pub = rospy.Publisher("/visualization_peduncle_marker_rs", Marker, queue_size=1)
         self.peduncle_marker_base_pub = rospy.Publisher("/visualization_peduncle_marker_base", Marker, queue_size=1)
 
         self.pepper_marker_rs_pub = rospy.Publisher("/visualization_pepper_marker_rs", Marker, queue_size=1)
         self.pepper_marker_base_pub = rospy.Publisher("/visualization_pepper_marker_base", Marker, queue_size=1)
 
-        self.depth_subscriber = rospy.Subscriber(
-            '/camera/depth/image_rect_raw', Image, self.depth_callback, queue_size=1)
-        self.image_subscriber = rospy.Subscriber(
-            '/camera/color/image_raw', Image, self.image_callback, queue_size=1)
-        self.image_publisher = rospy.Publisher(
-            '/pepper_yolo_results', Image, queue_size=1)
-        self.pepper_center_publisher = rospy.Publisher(
-            '/pepper_center', Point, queue_size=1)
-        self.peduncle_center_publisher = rospy.Publisher(
-            '/peduncle_center', Point, queue_size=1)
+        self.image_pub = rospy.Publisher('/pepper_yolo_results', Image, queue_size=1)
+        self.pepper_center_pub = rospy.Publisher('/pepper_center', Point, queue_size=1)
+        self.peduncle_center_pub = rospy.Publisher('/peduncle_center', Point, queue_size=1)
+        self.poi_pub = rospy.Publisher('/poi', Point, queue_size=1)
+
+        self.poi_publisher = rospy.Publisher('/perception/peduncle/poi', Pose, queue_size=10)
+
+        # Subscribers
+        self.camera_info_sub = rospy.Subscriber("/camera/color/camera_info", CameraInfo, self.camera_info_callback)
+        self.depth_sub = rospy.Subscriber('/camera/depth/image_rect_raw', Image, self.depth_callback, queue_size=1)
+        self.image_sub = rospy.Subscriber('/camera/color/image_raw', Image, self.image_callback, queue_size=1)
+
+        self.state_sub = rospy.Subscriber('/state', Int16, self.state_callback, queue_size=1)
+
         
         self.poi = Point()
-        self.poi_pub = rospy.Publisher(
-            '/poi', Point, queue_size=1)
-        
         self.state = None
-        self.state_sub = rospy.Subscriber('/state', Int16, self.state_callback, queue_size=1)
-        
-        self.peduncle_box_size_publisher = rospy.Publisher(
-            '/peduncle_box_size', String, queue_size=1)
         
         # POI publisher
-        self.poi_publisher = rospy.Publisher('/perception/peduncle/poi', Pose, queue_size=10)
 
         self.pepper_center = None
         self.peduncle_center = None
@@ -117,12 +104,15 @@ class PerceptionNode:
         self.fruit_detections = dict()
 
     def image_callback(self, msg):
+
         try:
+
             # Convert ROS Image message to OpenCV image
-            cv_image = self.bridge.imgmsg_to_cv2(
-                msg, desired_encoding='passthrough')
+            cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='passthrough')
+
             if cv_image is not None:
                 _ = self.run_yolo(cv_image)
+
                 pepper_fruit_peduncle_match = match_pepper_fruit_peduncle(self.fruit_detections, self.peduncle_detections)
 
                 for (pfn, ppn), _ in pepper_fruit_peduncle_match:
@@ -136,23 +126,28 @@ class PerceptionNode:
                         pepper.pepper_peduncle.parent_pepper = self.pepper_count
                         self.pepper_detections[self.pepper_count] = pepper
                         self.pepper_count += 1
+
                 self.fruit_detections = dict()
                 self.peduncle_detections = dict()
-                print("pepper_fruit_peduncle_match\n",self.pepper_detections)
+
                 image = cv_image
+
                 if self.pepper_detections != dict():
                     for i, pepper in self.pepper_detections.items():
                         rand_color = self.random_color()
                         image = self.visualize_result(cv_image, pepper.pepper_fruit.segment, color=rand_color)
                         image = self.visualize_result(cv_image, pepper.pepper_peduncle.segment, color=rand_color)
+
                 try:
                     image_msg_bb = self.bridge.cv2_to_imgmsg(image, "rgb8")
-                    self.image_publisher.publish(image_msg_bb)
+                    self.image_pub.publish(image_msg_bb)
 
                 except cv_bridge.CvBridgeError as e:
                     rospy.logerr(
                         "Error converting back to image message: {}".format(e))
+                    
                 self.pepper_detections = dict()
+
         except cv_bridge.CvBridgeError as e:
             rospy.logerr("Error converting from image message: {}".format(e))
             return
@@ -164,12 +159,12 @@ class PerceptionNode:
         self.peduncle_dict = dict()
         peduncle_count = 0
 
-        self.pepper_center = Point()
+        self.pepper_center = Point() # TODO can we just do Point(x=-1, y=-1, z=0)?
         self.pepper_center.x = -1 # Assume there are no detections initially
         self.pepper_center.y = -1
         self.pepper_center.z = 0
 
-        self.peduncle_center = Point()
+        self.peduncle_center = Point() # TODO can we just do Point(x=-1, y=-1, z=0)?
         self.peduncle_center.x = -1 # self.img_width/2
         self.peduncle_center.y = -1 # self.img_height/2
         self.peduncle_center.z = 0
@@ -183,20 +178,18 @@ class PerceptionNode:
 
         if result.boxes.data.size(0) != 0: # if there is a detection
 
-            for i in range(result.masks.masks.size(0)): # for each mask
+            for i in range(result.masks.data.size(0)): # for each mask
                 segment = result.masks.segments[i] # only boundary of mask
                 mask = result.masks.masks[i]       # mask with 1s and 0s
                 box = result.boxes.xyxy[i]  
                 cls = result.boxes.cls[i] # 0 is pepper, 1 is peduncle
-                # image = self.visualize_result(image, segment)
+
                 if cls == 0: # it is a pepper
                     pepper_detection = PepperFruit(self.fruit_count, segment=segment)
                     xywh = result.boxes.xywh # TODO change (this is just a placeholder)
                     pepper_detection.xywh = xywh[0].cpu().numpy()
                     self.fruit_detections[self.fruit_count] = pepper_detection
                     self.fruit_count+= 1
-                    # image = self.visualize_result(image, segment)
-                    
 
                     # These are in RealSense coordinate system
                     self.pepper_center.x = int((box[0] + box[2]) / 2)
@@ -208,12 +201,12 @@ class PerceptionNode:
                     self.pepper_center.z = 0 #self.get_depth(int(self.pepper_center.x), int(self.pepper_center.y))
 
                     # X, Y, Z in RS frame
-                    X, Y, Z = self.get_3D_coords(
-                        self.pepper_center.x, self.pepper_center.y, self.pepper_center.z)
+                    # X, Y, Z = self.get_3D_coords(
+                    #     self.pepper_center.x, self.pepper_center.y, self.pepper_center.z)
                     
-                    self.pepper_marker_rs.points.append(Point(X, Y, Z))
-                    self.pepper_marker_rs.header.stamp = rospy.Time.now()
-                    self.pepper_marker_rs_pub.publish(self.pepper_marker_rs)
+                    # self.pepper_marker_rs.points.append(Point(X, Y, Z))
+                    # self.pepper_marker_rs.header.stamp = rospy.Time.now()
+                    # self.pepper_marker_rs_pub.publish(self.pepper_marker_rs)
 
                     # X, Y, Z in base frame
                     # X_b, Y_b, Z_b = self.transform_to_base_frame(X, Y, Z)
@@ -238,8 +231,6 @@ class PerceptionNode:
                     self.peduncle_detections[peduncle_count] = peduncle_detection
                     peduncle_count += 1
                                         
-                    # image = self.visualize_result(image, segment)
-
                     # These are in RealSense coordinate system
                     self.peduncle_center.x = poi_y
                     self.peduncle_center.y = poi_x
@@ -264,16 +255,6 @@ class PerceptionNode:
                     self.box_size = (box[2] - box[0]) * (box[3] - box[1])
 
                     self.last_peduncle_center = self.peduncle_center
-
-                    if self.box_size > 5000:
-                        self.go_straight = True
-
-                    # get the POI in the base_link frame TODO Ishu
-                    poi_in_base_link = Pose()
-                    poi_in_base_link.position.x = 0
-                    poi_in_base_link.position.y = 0
-                    poi_in_base_link.position.z = 0
-                    self.poi_publisher.publish(poi_in_base_link)
             
         else:
             self.detection_void_count += 1
@@ -286,30 +267,18 @@ class PerceptionNode:
                 self.detection_void_count = 0
 
         self.poi_pub.publish(self.poi)
-        self.pepper_center_publisher.publish(self.pepper_center)
-        self.peduncle_center_publisher.publish(self.peduncle_center)
-
-
-        # try:
-        #     image_msg_bb = self.bridge.cv2_to_imgmsg(image, "rgb8")
-        #     self.image_publisher.publish(image_msg_bb)
-
-        # except cv_bridge.CvBridgeError as e:
-        #     rospy.logerr(
-        #         "Error converting back to image message: {}".format(e))
-        #     return
+        self.pepper_center_pub.publish(self.pepper_center)
+        self.peduncle_center_pub.publish(self.peduncle_center)
 
         return image
 
     def depth_callback(self, msg):
         try:
             # Convert ROS image message to OpenCV image
-            self.depth_image = self.bridge.imgmsg_to_cv2(
-                msg, desired_encoding='passthrough')
+            self.depth_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='passthrough')
 
         except cv_bridge.CvBridgeError as e:
-            rospy.logerr(
-                "Error converting from depth image message: {}".format(e))
+            rospy.logerr("Error converting from depth image message: {}".format(e))
             
     def get_depth(self, x, y):
         left_x = max(0, x - self.depth_window)
@@ -334,7 +303,7 @@ class PerceptionNode:
         self.camera_info_sub.unregister()
 
     def get_3D_coords(self, x, y, z):
-        # Get the 3D coordinates of the pixel in the RS frame?TODO
+        # Get the 3D coordinates of the pixel in the RS frame? TODO
         Z = z
         X = (x - self.camera_matrix[0, 2]) * Z / self.camera_matrix[0, 0]
         Y = (y - self.camera_matrix[1, 2]) * Z / self.camera_matrix[1, 1]
@@ -368,6 +337,7 @@ class PerceptionNode:
         mask_coords = (segment @ np.array([[self.img_width, 0], [0, self.img_height]])).astype(int)
         image = cv2.fillPoly(image, pts=[mask_coords], color=color)
         return image
+    
     def make_marker(self, marker_type=8, frame_id='camera_color_optical_frame', r= 1, g=0, b=0, a=1, x=0.05, y=0.05):
         marker = Marker()
         marker.type = marker_type
@@ -378,7 +348,9 @@ class PerceptionNode:
         marker.color.a = a
         marker.scale.x = x
         marker.scale.y = y
+
         return marker
+    
     def random_color(self):
         r = random.randint(0, 255)
         g = random.randint(0, 255)
@@ -392,6 +364,3 @@ if __name__ == '__main__':
         rospy.spin()
     except rospy.ROSInterruptException:
         pass
-
-
-# names: {0: 'bell-pepper-green', 1: 'bell-pepper-peduncle'}

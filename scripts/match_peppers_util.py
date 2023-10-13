@@ -2,7 +2,7 @@ from typing import List, Optional, Dict
 import math 
 import collections
 from shapely import Polygon
-from get_poi import PepperPeduncle, PepperFruit
+from pepper_util import PepperPeduncle, PepperFruit
 
 def distance_between_pepper_fruit_peduncle(pepper_fruit: PepperFruit, pepper_peduncle: PepperPeduncle):
     pepper_fruit_xywh = pepper_fruit.xywh
@@ -70,23 +70,20 @@ def match_pepper_fruit_peduncle(pepper_fruit_detections: Dict[int, PepperFruit],
                                 pepper_peduncle_detections: Dict[int, PepperPeduncle]):
     
     pepper_fruit_peduncle_distances = []
-    print("in pepper matching", pepper_fruit_detections, pepper_peduncle_detections)
 
     for pepper_fruit in pepper_fruit_detections.values():
-        print("pepper_fruit.number: ", pepper_fruit.number)
 
         min_dist = math.inf
         peduncle_match = None
 
         for pepper_peduncle in pepper_peduncle_detections.values():
-            print("pepper_peduncle.number: ", pepper_peduncle.number)
 
             dist = distance_between_pepper_fruit_peduncle(pepper_fruit, pepper_peduncle)
 
             x, y, w, h = pepper_fruit.xywh
-            box1 = [[x - w / 2, y - h / 2], [x + w / 2, y - h / 2], [x + w / 2, y + h / 2], [x - w / 2, y + h / 2]]
+            box1 = [[x - h / 2, y - w / 2], [x + h / 2, y - w / 2], [x + h / 2, y + w / 2], [x - h / 2, y + w / 2]]
             x, y, w, h = pepper_peduncle.xywh
-            box2 = [[x - w / 2, y - h / 2], [x + w / 2, y - h / 2], [x + w / 2, y + h / 2], [x - w / 2, y + h / 2]]
+            box2 = [[x - h / 2, y - w / 2], [x + h / 2, y - w / 2], [x + h / 2, y + w / 2], [x - h / 2, y + w / 2]]
 
             iou = calculate_iou(box1, box2)
 
@@ -100,4 +97,6 @@ def match_pepper_fruit_peduncle(pepper_fruit_detections: Dict[int, PepperFruit],
         pepper_fruit_peduncle_distances.append(((pepper_fruit.number, peduncle_match.number), min_dist))
 
     pepper_fruit_peduncle_match = remove_duplicate_peduncles(pepper_fruit_peduncle_distances)
+    if (pepper_fruit_peduncle_match):
+        print(pepper_fruit_peduncle_match)
     return pepper_fruit_peduncle_match

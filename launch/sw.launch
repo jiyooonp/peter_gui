@@ -29,7 +29,7 @@
   <node pkg="perception_refactor"  name="ee_node" type="ee_node.py"></node>
 
   <!-- perception node-->
-  <node pkg="perception_refactor"  name="perception_node" type="perception_node.py"></node>
+  <!-- <node pkg="perception_refactor"  name="perception_node" type="perception_node.py"></node> -->
 
   <!-- manipulation node -->
   <node pkg="perception_refactor"  name="manipulator" type="manipulator.py"></node>

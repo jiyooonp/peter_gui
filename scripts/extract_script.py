@@ -46,12 +46,12 @@ def extract_images_from_bag(bag_file, topic, output_folder):
 if __name__ == '__main__':
 
     # sys.argv[1]
-    folder_path = "/root/catkin_ws/levelb_rosbag"
+    folder_path = "/root/catkin_ws/highbay/"
     output_folder = "/root/catkin_ws/video_bag/"
     topic = "/camera/color/image_raw"
 
     for bag_file in os.listdir(folder_path):
         bag_name = bag_file.split(".")[0]
         print("converting: ", bag_name)
-        extract_images_from_bag(bag_file, topic, output_folder + bag_name)
+        extract_images_from_bag(folder_path+bag_file, topic, output_folder + bag_name)
 

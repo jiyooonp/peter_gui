@@ -299,3 +299,23 @@ class Pepper:
 
     def __str__(self):
         return f"Pepper #{self.number}"
+
+
+'''
+
+[ERROR] [1697218655.758527]: bad callback: <bound method PerceptionNode.image_callback of <__main__.PerceptionNode object at 0x7f65ee81deb0>>
+Traceback (most recent call last):
+  File "/opt/ros/noetic/lib/python3/dist-packages/rospy/topics.py", line 750, in _invoke_callback
+    cb(msg)
+  File "/home/sridevi/Documents/iowa_ws/src/ISU_Demo_Perception/scripts/perception_node.py", line 111, in image_callback
+    self.run_yolo(cv_image)
+  File "/home/sridevi/Documents/iowa_ws/src/ISU_Demo_Perception/scripts/perception_node.py", line 231, in run_yolo
+    poi_x, poi_y = peduncle_detection.set_point_of_interaction()
+  File "/home/sridevi/Documents/iowa_ws/src/ISU_Demo_Perception/scripts/pepper_util.py", line 179, in set_point_of_interaction
+    self._curve.fit_curve_to_mask(self._mask)
+  File "/home/sridevi/Documents/iowa_ws/src/ISU_Demo_Perception/scripts/pepper_util.py", line 78, in fit_curve_to_mask
+    params1, _ = curve_fit(self.parabola, y, x)
+  File "/home/sridevi/.local/lib/python3.8/site-packages/scipy/optimize/_minpack_py.py", line 832, in curve_fit
+    raise TypeError(f"The number of func parameters={n} must not"
+TypeError: The number of func parameters=3 must not exceed the number of data points=2
+'''

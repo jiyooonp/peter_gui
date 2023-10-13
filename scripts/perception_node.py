@@ -5,7 +5,7 @@ import rospkg
 import cv_bridge
 
 from sensor_msgs.msg import Image, CameraInfo
-from std_msgs.msg import String
+from std_msgs.msg import String, Int16
 from geometry_msgs.msg import Point, Pose
 from visualization_msgs.msg import Marker
 
@@ -17,11 +17,9 @@ import numpy as np
 from PIL import Image as PILImage
 
 import tf2_ros
-from std_msgs.msg import String, Int16
 from tf.transformations import quaternion_matrix
 
 from ultralytics import YOLO
-from shapely import Polygon
 
 import os
 import io
@@ -79,7 +77,6 @@ class PerceptionNode:
 
         self.state_sub = rospy.Subscriber('/state', Int16, self.state_callback, queue_size=1)
 
-        
         self.poi = Point()
         self.state = None
         
@@ -111,7 +108,7 @@ class PerceptionNode:
             cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='passthrough')
 
             if cv_image is not None:
-                _ = self.run_yolo(cv_image)
+                self.run_yolo(cv_image)
 
                 pepper_fruit_peduncle_match = match_pepper_fruit_peduncle(self.fruit_detections, self.peduncle_detections)
 
@@ -154,7 +151,7 @@ class PerceptionNode:
 
     def run_yolo(self, image):
 
-        results_both = self.yolo(image)
+        results_both = self.yolo(image, verbose=False)
 
         self.peduncle_dict = dict()
         peduncle_count = 0
@@ -175,13 +172,14 @@ class PerceptionNode:
         self.peduncle_marker_base.points = []
 
         result = results_both[0] # only take the first image because there is only one image
+        # import ipdb;
+        # ipdb.set_trace()
+        if len(result.boxes) != 0: # if there is a detection
 
-        if result.boxes.data.size(0) != 0: # if there is a detection
-
-            for i in range(result.masks.data.size(0)): # for each mask
-                segment = result.masks.segments[i] # only boundary of mask
-                mask = result.masks.masks[i]       # mask with 1s and 0s
-                box = result.boxes.xyxy[i]  
+            for i in range(len(result.masks)): # for each mask
+                segment = result.masks.xyn[i] # only boundary of mask
+                mask = result.masks.data[i]       # mask with 1s and 0s
+                box = result.boxes.xyxy[i]   
                 cls = result.boxes.cls[i] # 0 is pepper, 1 is peduncle
 
                 if cls == 0: # it is a pepper
@@ -256,9 +254,9 @@ class PerceptionNode:
 
                     self.last_peduncle_center = self.peduncle_center
             
-        else:
+        else: 
+            # TODO probably don't need this anymore 
             self.detection_void_count += 1
-            print("no detection!!")
             if self.detection_void_count > 100:
                 self.peduncle_center.x = self.last_peduncle_center.x
                 self.peduncle_center.y = 240
@@ -269,8 +267,6 @@ class PerceptionNode:
         self.poi_pub.publish(self.poi)
         self.pepper_center_pub.publish(self.pepper_center)
         self.peduncle_center_pub.publish(self.peduncle_center)
-
-        return image
 
     def depth_callback(self, msg):
         try:

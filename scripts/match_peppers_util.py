@@ -70,16 +70,13 @@ def match_pepper_fruit_peduncle(pepper_fruit_detections: Dict[int, PepperFruit],
                                 pepper_peduncle_detections: Dict[int, PepperPeduncle]):
     
     pepper_fruit_peduncle_distances = []
-    print("in pepper matching", pepper_fruit_detections, pepper_peduncle_detections)
 
     for pepper_fruit in pepper_fruit_detections.values():
-        print("pepper_fruit.number: ", pepper_fruit.number)
 
         min_dist = math.inf
         peduncle_match = None
 
         for pepper_peduncle in pepper_peduncle_detections.values():
-            print("pepper_peduncle.number: ", pepper_peduncle.number)
 
             dist = distance_between_pepper_fruit_peduncle(pepper_fruit, pepper_peduncle)
 

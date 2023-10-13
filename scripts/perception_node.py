@@ -27,7 +27,7 @@ import os
 import io
 import random
 
-from get_poi import PepperPeduncle, PepperFruit, Pepper
+from pepper_util import PepperPeduncle, PepperFruit, Pepper
 from match_peppers_util import match_pepper_fruit_peduncle
 
 class PerceptionNode:

@@ -2,7 +2,7 @@ from typing import List, Optional, Dict
 import math 
 import collections
 from shapely import Polygon
-from get_poi import PepperPeduncle, PepperFruit
+from pepper_util import PepperPeduncle, PepperFruit
 
 def distance_between_pepper_fruit_peduncle(pepper_fruit: PepperFruit, pepper_peduncle: PepperPeduncle):
     pepper_fruit_xywh = pepper_fruit.xywh

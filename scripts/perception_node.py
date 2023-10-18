@@ -40,7 +40,7 @@ class PerceptionNode:
         self.img_height = 480
 
         rospack = rospkg.RosPack()
-        package_name = 'perception_refactor'
+        package_name = 'fvd_ws'
         package_path = rospack.get_path(package_name)
 
         # Define the YOLO model

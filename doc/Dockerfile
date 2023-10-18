@@ -55,6 +55,7 @@ RUN pip3 install shapely==2.0.0
 RUN pip install ultralytics==8.0.199
 RUN pip install pyrealsense2==2.54.2.5684
 RUN pip install termcolor==2.3.0
+RUN pip install xarm
 
 # for xarm 
 RUN apt-get -y install ros-noetic-moveit-visual-tools
@@ -87,6 +88,8 @@ RUN sudo apt-get install -y ros-noetic-moveit
 RUN apt-get -y update && apt-get -y upgrade && apt-get -y dist-upgrade
 RUN apt-get install -y libglfw3-dev libgl1-mesa-dev libglu1-mesa-dev at
 RUN apt-get install ros-noetic-moveit ros-noetic-moveit-plugins ros-noetic-moveit-planners
+RUN apt-get install -y ros-noetic-moveit-servo
+RUN apt-get install -y ros-noetic-joy
 
 RUN source /opt/ros/noetic/setup.bash
 CMD cm

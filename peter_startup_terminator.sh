@@ -16,13 +16,13 @@ source ${SETUP_BASH}
 terminator_command="terminator"
 
 # Add first pane (it will be the default one)
-terminator_command+=" --command=\"bash -c 'source $SETUP_BASH; roslaunch perception_refactor teleop.launch; exec bash'\""
+terminator_command+=" --command=\"bash -c 'source $SETUP_BASH; roslaunch fvd_ws teleop.launch; exec bash'\""
 
 # Add horizontal split and second pane
-terminator_command+=" --geometry=1920x1080 -H --command=\"bash -c 'source $SETUP_BASH; roslaunch perception_refactor sw.launch; exec bash'\""
+terminator_command+=" --geometry=1920x1080 -H --command=\"bash -c 'source $SETUP_BASH; roslaunch fvd_ws sw.launch; exec bash'\""
 
 # Add vertical split and third pane
-terminator_command+=" -v --command=\"bash -c 'source $SETUP_BASH; roslaunch perception_refactor joy.launch; exec bash'\""
+terminator_command+=" -v --command=\"bash -c 'source $SETUP_BASH; roslaunch fvd_ws joy.launch; exec bash'\""
 
 # Run the Terminator command
 eval $terminator_command

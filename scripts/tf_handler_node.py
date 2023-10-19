@@ -23,7 +23,7 @@ class TfBroadcaster:
         
         rospack = rospkg.RosPack()
         # get the file path for rospy_tutorials
-        package_path = rospack.get_path("perception_refactor")
+        package_path = rospack.get_path("fvd_ws")
         
         self.parseYaml(tf_yaml, package_path)
 

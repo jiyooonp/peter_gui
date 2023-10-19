@@ -14,24 +14,24 @@
   </include>
 
   <!-- tf node-->
-  <node pkg="perception_refactor"  name="tf_handler_node" type="tf_handler_node.py"></node>
+  <node pkg="fvd_ws"  name="tf_handler_node" type="tf_handler_node.py"></node>
 
   <!-- state machine node-->
-  <node pkg="perception_refactor"  name="state_machine_node" type="state_machine_node.py"></node>
+  <node pkg="fvd_ws"  name="state_machine_node" type="state_machine_node.py"></node>
 
   <!-- planner node-->
-  <!-- <node pkg="perception_refactor"  name="planner_node" type="planner_node.py"></node> -->
+  <node pkg="fvd_ws"  name="planner_node" type="planner_node.py"></node>
 
   <!-- visual servo node-->
-  <!-- <node pkg="perception_refactor"  name="visual_servo_node" type="visual_servo_node.py"></node> -->
+  <!-- <node pkg="fvd_ws"  name="visual_servo_node" type="visual_servo_node.py"></node> -->
 
   <!-- ee node-->
-  <node pkg="perception_refactor"  name="ee_node" type="ee_node.py"></node>
+  <!-- <node pkg="fvd_ws"  name="ee_node" type="ee_node.py"></node> -->
 
   <!-- perception node-->
-  <!-- <node pkg="perception_refactor"  name="perception_node" type="perception_node.py"></node> -->
+  <node pkg="fvd_ws"  name="perception_node" type="perception_node.py"></node>
 
   <!-- manipulation node -->
-  <node pkg="perception_refactor"  name="manipulator" type="manipulator.py"></node>
+  <node pkg="fvd_ws"  name="manipulator" type="manipulator.py"></node>
 
 </launch>

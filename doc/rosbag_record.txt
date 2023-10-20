@@ -1,0 +1,1 @@
+rosbag record -o /root/catkin_ws/rosbag /camera/aligned_depth_to_color/camera_info /camera/aligned_depth_to_color/image_raw /camera/color/camera_info /camera/color/image_raw /camera/color/metadata /camera/depth/camera_info /camera/depth/color/points /camera/depth/image_rect_raw /camera/depth/metadata /camera/extrinsics/depth_to_color /rosout /rosout_agg /tf /tf_static

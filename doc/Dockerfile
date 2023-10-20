@@ -55,6 +55,7 @@ RUN pip3 install shapely==2.0.0
 RUN pip install ultralytics==8.0.199
 RUN pip install pyrealsense2==2.54.2.5684
 RUN pip install termcolor==2.3.0
+RUN pip install ipdb
 
 # for xarm 
 RUN apt-get -y install ros-noetic-moveit-visual-tools

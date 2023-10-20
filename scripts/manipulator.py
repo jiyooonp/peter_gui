@@ -53,8 +53,8 @@ class Manipulator:
         z *= 1000
 
         # add offsets
-        x -= self.pregrasp_offset # pregrasp offset
-        x -= 0.15 # ee length offset
+        x -= self.pregrasp_offset*1000 # pregrasp offset
+        x -= 0.15*1000 # ee length offset
 
         # just using the orientation values from the init position for now
         self.arm.set_position(x,y,z,87.280666, -44.962863, 84.593953, wait=True, speed=20)

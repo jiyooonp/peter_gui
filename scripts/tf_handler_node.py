@@ -37,7 +37,7 @@ class TfBroadcaster:
         transform = geometry_msgs.msg.TransformStamped()
         transform.header.stamp = rospy.Time.now()
         transform.header.frame_id = "link_eef"
-        transform.child_frame_id = "camera_color_optical_frame"
+        transform.child_frame_id = "camera_link"
         
         transform.transform.translation.x = trans[0]
         transform.transform.translation.y = trans[1]

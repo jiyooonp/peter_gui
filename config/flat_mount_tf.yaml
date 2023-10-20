@@ -9,8 +9,8 @@ Hwrist_rot45:
 
 # rot into to real sense frame (90 z+)
 Hreal_rot:
-  [[  0, -1, 0, 0], 
-   [  1, 0, 0, 0],
+  [[  1, 0, 0, 0], 
+   [  0, 1, 0, 0],
    [  0, 0, 1, 0],
    [  0, 0, 0, 1]] # in m
 
@@ -23,9 +23,16 @@ Hrot45_real:
    [        0,   0,         0, 1]] # in m
 
 
-# dont tilt
-Hreal_rot25:
-  [[ 1, 0, 0, 0], 
-   [ 0, 1, 0, 0],
-   [ 0, 0, 1, 0],
-   [ 0, 0, 0, 1]] # in m
+# align with camera link
+Hreal_roty:
+  [[  0,  0, 1, 0], 
+   [  0, -1, 0, 0],
+   [  1,  0, 0, 0],
+   [  0,  0, 0, 1]] # in m
+
+# include translation to camera link
+Hreal_rot2cam:
+  [[ 1, 0, 0, 0.0106], 
+   [ 0, 1, 0, 0.0175],
+   [ 0, 0, 1, 0.0125],
+   [ 0, 0, 0,      1]] # in m

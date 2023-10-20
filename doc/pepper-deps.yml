@@ -1,0 +1,22 @@
+# used to make a conda env from an list of deps 
+
+name: pep-env
+channels:
+  - conda-forge
+dependencies:
+  - torchvision
+  - matplotlib
+  - opencv
+  - numpy
+  - scipy
+  - scikit-image
+  - scikit-learn
+  - pandas
+  - shapely
+  - ultralytics==8.0.136
+  - pyrealsense2
+  - termcolor
+  - tf-conversions
+  - xArm-Python-SDK==1.13.14
+  - pip:
+    - rospkg

@@ -45,8 +45,7 @@ class PlannerNode:
         self.state_pub = rospy.Publisher('/state', Int16, queue_size=1) # state pub
         self.perception_communication_pub = rospy.Publisher('/xarm_moving', Bool, queue_size=1) # state pub
         self.poi_from_arm_pub = rospy.Publisher('/poi_from_arm', Marker, queue_size=1) # poi pub
-
-        self.poi_marker = self.make_marker(marker_type=8, frame_id='link_base', r= 1, g=0, b=1, a=1, x=0.04, y=0.04)
+        self.poi_marker = self.make_marker(marker_type=8, frame_id='link_base', r=0, g=1, b=1, a=1, x=0.04, y=0.04)
 
 
     def state_callback(self, data):
@@ -133,8 +132,7 @@ class PlannerNode:
                 xarm = Manipulator()
                 # todo: need to change this to get the matched pepper poi
                 if self.poi:
-                    print("POI!!!!!!")
-                    print(self.poi)
+                    rospy.logwarn(f"POI!!!!!! >>  {self.poi}")
                     self.perception_communication_pub.publish(True)
                     self.poi_marker.pose.position.x = self.poi.x
                     self.poi_marker.pose.position.y = self.poi.y
@@ -142,7 +140,7 @@ class PlannerNode:
 
                     self.poi_from_arm_pub.publish(self.poi_marker)
 
-                    xarm.moveToPoi(self.poi.x, self.poi.y, self.poi.z)
+                    xarm.moveToPregrasp(self.poi.x, self.poi.y, self.poi.z)
 
                 else:
                     rospy.logwarn("NO POI DETCTED YET!!!")
@@ -150,8 +148,8 @@ class PlannerNode:
                 xarm.disconnect()
                 rospy.sleep(.1)
                 self.planner_state_pub.publish(5)
-            except:
-                rospy.logwarn("ERROR: UNABLE TO MOVE TO PREGRASP POSITION")
+            except Exception as e:
+                rospy.logwarn(f"ERROR: UNABLE TO MOVE TO PREGRASP POSITION {e}")
                 self.state_pub.publish(10)
 
         # move to poi: open ee and place ee at cut/grip position
@@ -196,6 +194,8 @@ class PlannerNode:
         else:
             rospy.loginfo("ERROR: UNRECOGNIZED STATE IN PLANNER NODE")
             self.state_pub.publish(10)
+            
+        if self.poi: self.visualizePregrasp(self.poi.x, self.poi.y, self.poi.z)
 
     def make_marker(self, marker_type=8, frame_id='camera_color_optical_frame', r= 1, g=0, b=0, a=1, x=0.05, y=0.05):
         marker = Marker()
@@ -209,6 +209,15 @@ class PlannerNode:
         marker.scale.y = y
 
         return marker
+    
+            
+    def visualizePregrasp(self, x, y, z):
+        
+        self.poi_marker.points = []
+        self.poi_marker.points.append(Point(x - 0.30, y, z))
+        self.poi_marker.header.stamp = rospy.Time.now()
+        self.poi_from_arm_pub.publish(self.poi_marker)
+        
 
 
 if __name__ == '__main__':

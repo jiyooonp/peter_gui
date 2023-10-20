@@ -4,6 +4,7 @@ import rospy
 from xarm.wrapper import XArmAPI
 from xarm.version import __version__
 from visualization_msgs.msg import Marker
+from geometry_msgs.msg import Point
 
 
 """
@@ -30,7 +31,6 @@ class Manipulator:
         self.arm.set_mode(0)
         self.arm.set_state(0)
 
-        self.poi_marker = Marker()
 
     def moveToInit(self):
         """move to initial position"""
@@ -50,7 +50,7 @@ class Manipulator:
         print("Executing cartesian move")
         self.arm.set_position(x+dist, y, z, roll, pitch, yaw, wait=True) # todo: test out relative=True
 
-    def moveToPoi(self,x,y,z):
+    def moveToPregrasp(self,x,y,z):
         # convert to mm from m
         x *= 1000
         y *= 1000
@@ -60,15 +60,8 @@ class Manipulator:
         x -= self.pregrasp_offset*1000 # pregrasp offset
         x -= 0.15*1000 # ee length offset    
 
-        self.poi_marker.pose.position.x = self.poi.x / 1000
-        self.poi_marker.pose.position.y = self.poi.y / 1000
-        self.poi_marker.pose.position.z = self.poi.z / 1000
-
-        self.poi_from_arm_pub.publish(self.poi_marker)
-
         # just using the orientation values from the init position for now
         self.arm.set_position(x,y,z,87.280666, -44.962863, 84.593953, wait=True, speed=20)
-
 
 
     def test(self):

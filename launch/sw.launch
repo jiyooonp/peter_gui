@@ -20,7 +20,7 @@
   <node pkg="fvd_ws"  name="state_machine_node" type="state_machine_node.py"></node>
 
   <!-- planner node-->
-  <!-- <node pkg="fvd_ws"  name="planner_node" type="planner_node.py"></node> -->
+  <node pkg="fvd_ws"  name="planner_node" type="planner_node.py"></node>
 
   <!-- visual servo node-->
   <!-- <node pkg="fvd_ws"  name="visual_servo_node" type="visual_servo_node.py"></node> -->

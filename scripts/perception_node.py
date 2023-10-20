@@ -119,7 +119,7 @@ class PerceptionNode:
 
         # Subscribers
         self.camera_info_sub = rospy.Subscriber("/camera/color/camera_info", CameraInfo, self.camera_info_callback)
-        self.depth_sub = rospy.Subscriber('/camera/depth/image_rect_raw', Image, self.depth_callback, queue_size=1)
+        self.depth_sub = rospy.Subscriber('/camera/aligned_depth_to_color/image_raw', Image, self.depth_callback, queue_size=1)
         self.image_sub = rospy.Subscriber('/camera/color/image_raw', Image, self.image_callback, queue_size=1)
 
         self.state_sub = rospy.Subscriber('/state', Int16, self.state_callback, queue_size=1)
@@ -282,10 +282,10 @@ class PerceptionNode:
                     self.pepper_marker_base.header.stamp = rospy.Time.now()
                     self.pepper_marker_base_pub.publish(self.pepper_marker_base)
 
-                    if self.state != 5:
-                        self.poi.x = X_b
-                        self.poi.y = Y_b
-                        self.poi.z = Z_b
+                    # if self.state != 5:
+                    #     self.poi.x = X_b
+                    #     self.poi.y = Y_b
+                    #     self.poi.z = Z_b
 
                     self.last_pepper_center = self.pepper_center
 
@@ -358,6 +358,11 @@ class PerceptionNode:
                     self.peduncle_marker_base.points.append(Point(X_b, Y_b, Z_b))
                     self.peduncle_marker_base.header.stamp = rospy.Time.now()
                     self.peduncle_marker_base_pub.publish(self.peduncle_marker_base)
+                    
+                    if self.state != 5:
+                        self.poi.x = X_b
+                        self.poi.y = Y_b
+                        self.poi.z = Z_b
 
                     self.box_size = (box[2] - box[0]) * (box[3] - box[1])
 

@@ -165,10 +165,6 @@ class StateMachineNode:
             rospy.loginfo_throttle_identical(1,"ERROR: UNRECOGNIZED STATE IN STATE MACHINE NODE")
             self.state == 10
 
-
-
-
-
     # --------- MAIN LOOP -------------
     def run(self):
         """Main loop"""

@@ -8,6 +8,7 @@ from geometry_msgs.msg import Twist, Point
 from xarm_msgs.msg import RobotMsg
 from manipulator import Manipulator
 from ag_gripper_driver.srv import Pegasus, PegasusResponse
+from visualization_msgs.msg import Marker
 
 
 """
@@ -42,6 +43,11 @@ class PlannerNode:
         self.joy_pub = rospy.Publisher('/joy_relay', Joy, queue_size=1) # joystick commands pub
         self.planner_state_pub = rospy.Publisher('/planner_state', Int16, queue_size=1) # planner state pub
         self.state_pub = rospy.Publisher('/state', Int16, queue_size=1) # state pub
+        self.perception_communication_pub = rospy.Publisher('/xarm_moving', Bool, queue_size=1) # state pub
+        self.poi_from_arm_pub = rospy.Publisher('/poi_from_arm', Marker, queue_size=1) # poi pub
+
+        self.poi_marker = self.make_marker(marker_type=8, frame_id='link_base', r= 1, g=0, b=1, a=1, x=0.04, y=0.04)
+
 
     def state_callback(self, data):
         """Callback for state message"""
@@ -50,7 +56,6 @@ class PlannerNode:
     def robot_state_callback(self, data):
         """Callback for robot state message"""
         self.ee_pose = data.pose
-        # print(f"ee pose: {self.ee_pose}")
 
     def joystick_callback(self, data):
         """Callback for joystick message"""
@@ -61,20 +66,11 @@ class PlannerNode:
         """Callback for POI message"""
         # update joy state
         self.poi = data
-
-    def discretize(self, val):
-        """discretize arm teleop value"""
-        if val > 0.1:
-            return 1
-        elif val < -0.1:
-            return -1
-        else:
-            return 0
+        self.poi_from_arm_pub.publish(self.poi_marker)
     
     def send_to_ee(self, command):
         # send commands to open, harvest, or close
         # need to wait for confirmation this is done before returning
-
 
         # rospy.wait_for_service('/gripper_service')
         if command == "open":
@@ -111,7 +107,6 @@ class PlannerNode:
 
         # return to init - manual only
         elif self.state == 3:
-            # print("!!!!!!!!!!!!!!!!!!!!!!1here!!!!!!!!!!!!!!!!")
             self.manipulator.moveToInit()
             rospy.sleep(1)
 
@@ -140,7 +135,15 @@ class PlannerNode:
                 if self.poi:
                     print("POI!!!!!!")
                     print(self.poi)
+                    self.perception_communication_pub.publish(True)
+                    self.poi_marker.pose.position.x = self.poi.x
+                    self.poi_marker.pose.position.y = self.poi.y
+                    self.poi_marker.pose.position.z = self.poi.z
+
+                    self.poi_from_arm_pub.publish(self.poi_marker)
+
                     xarm.moveToPoi(self.poi.x, self.poi.y, self.poi.z)
+
                 else:
                     rospy.logwarn("NO POI DETCTED YET!!!")
                 rospy.sleep(.1)
@@ -193,6 +196,19 @@ class PlannerNode:
         else:
             rospy.loginfo("ERROR: UNRECOGNIZED STATE IN PLANNER NODE")
             self.state_pub.publish(10)
+
+    def make_marker(self, marker_type=8, frame_id='camera_color_optical_frame', r= 1, g=0, b=0, a=1, x=0.05, y=0.05):
+        marker = Marker()
+        marker.type = marker_type
+        marker.header.frame_id = frame_id
+        marker.color.r = r
+        marker.color.g = g
+        marker.color.b = b
+        marker.color.a = a
+        marker.scale.x = x
+        marker.scale.y = y
+
+        return marker
 
 
 if __name__ == '__main__':

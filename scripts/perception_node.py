@@ -5,7 +5,7 @@ import rospkg
 import cv_bridge
 
 from sensor_msgs.msg import Image, CameraInfo
-from std_msgs.msg import String, Int16
+from std_msgs.msg import String, Int16, Bool
 from geometry_msgs.msg import Point, Pose
 from visualization_msgs.msg import Marker
 
@@ -29,7 +29,7 @@ from pepper_util import PepperPeduncle, PepperFruit, Pepper
 from match_peppers_util import match_pepper_fruit_peduncle
 
 import matplotlib.pyplot as plt
-import matplotlib.pyplot as plt
+
 def plot_3d_points(points1, points2, img, filename):
     # Create a new figure
     fig = plt.figure(figsize=(10, 5))  # Adjust the figure size as needed
@@ -124,6 +124,8 @@ class PerceptionNode:
 
         self.state_sub = rospy.Subscriber('/state', Int16, self.state_callback, queue_size=1)
 
+        self.xarm_moving_sub = rospy.Subscriber('/xarm_moving', Bool, self.xarm_moving_callback, queue_size=1)
+
         self.poi = Point()
         self.state = None
         
@@ -153,6 +155,12 @@ class PerceptionNode:
         self.image = np.zeros((480, 640, 3), dtype=np.uint8)
         self.vis_pepper_list = []
         self.vis_peduncle_list = []
+
+        self.xarm_moving = False
+    
+    def xarm_moving_callback(self, msg):
+        self.xarm_moving = msg.data
+        print(self.xarm_moving)
 
     def image_callback(self, msg):
 
@@ -369,7 +377,6 @@ class PerceptionNode:
                 self.pepper_center.y = self.last_pepper_center.y
                 self.pepper_center.x = 240
                 self.detection_void_count = 0
-
         self.poi_pub.publish(self.poi)
         self.pepper_center_pub.publish(self.pepper_center)
         self.peduncle_center_pub.publish(self.peduncle_center)

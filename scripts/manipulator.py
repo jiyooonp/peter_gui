@@ -31,6 +31,8 @@ class Manipulator:
         self.arm.set_state(0)
 
         self.poi_marker = Marker()
+        self.poi_from_arm_pub = rospy.Publisher('/poi_from_arm', Marker, queue_size=1) # poi pub
+        self.poi_marker = self.make_marker(marker_type=8, frame_id='link_base', r= 1, g=0, b=1, a=1, x=0.6, y=0.6)
 
     def moveToInit(self):
         """move to initial position"""
@@ -52,23 +54,22 @@ class Manipulator:
 
     def moveToPoi(self,x,y,z):
         # convert to mm from m
-        x *= 1000
-        y *= 1000
-        z *= 1000
-
+        # x is forward y is left z is up
+        print("before x: ", x)
         # add offsets
-        x -= self.pregrasp_offset*1000 # pregrasp offset
-        x -= 0.15*1000 # ee length offset    
-
-        self.poi_marker.pose.position.x = self.poi.x / 1000
-        self.poi_marker.pose.position.y = self.poi.y / 1000
-        self.poi_marker.pose.position.z = self.poi.z / 1000
+        x -= self.pregrasp_offset # pregrasp offset
+        x -= 0.15 # ee length offset    
+        print("after x: ", x)
+        self.poi_marker.pose.position.x = x 
+        self.poi_marker.pose.position.y = y 
+        self.poi_marker.pose.position.z = z 
 
         self.poi_from_arm_pub.publish(self.poi_marker)
-
-        # just using the orientation values from the init position for now
-        self.arm.set_position(x,y,z,87.280666, -44.962863, 84.593953, wait=True, speed=20)
-
+        if z > 0.3 :
+            # just using the orientation values from the init position for now
+            self.arm.set_position(x * 1000,y* 1000,z* 1000,87.280666, -44.962863, 84.593953, wait=True, speed=20)
+        else:
+            print("Is the pepper really closer than 60cm from the link_base?")
 
 
     def test(self):

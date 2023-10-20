@@ -119,7 +119,7 @@ class PerceptionNode:
 
         # Subscribers
         self.camera_info_sub = rospy.Subscriber("/camera/color/camera_info", CameraInfo, self.camera_info_callback)
-        self.depth_sub = rospy.Subscriber('/camera/depth/image_rect_raw', Image, self.depth_callback, queue_size=1)
+        self.depth_sub = rospy.Subscriber('/camera/aligned_depth_to_color/image_raw', Image, self.depth_callback, queue_size=1)
         self.image_sub = rospy.Subscriber('/camera/color/image_raw', Image, self.image_callback, queue_size=1)
 
         self.state_sub = rospy.Subscriber('/state', Int16, self.state_callback, queue_size=1)
@@ -343,6 +343,8 @@ class PerceptionNode:
                     self.peduncle_center.y = poi_y
 
                     self.peduncle_center.z = self.get_depth(int(self.peduncle_center.x), int(self.peduncle_center.y))
+                    if self.peduncle_center.z < 0.2:
+                        continue
                     
                     # X, Y, Z in RS axes
                     X, Y, Z = self.get_3D_coords(

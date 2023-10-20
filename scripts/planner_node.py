@@ -44,7 +44,7 @@ class PlannerNode:
         self.planner_state_pub = rospy.Publisher('/planner_state', Int16, queue_size=1) # planner state pub
         self.state_pub = rospy.Publisher('/state', Int16, queue_size=1) # state pub
         self.perception_communication_pub = rospy.Publisher('/xarm_moving', Bool, queue_size=1) # state pub
-        self.poi_from_arm_pub = rospy.Publisher('/poi_from_arm', Marker, queue_size=1) # poi pub
+        self.poi_from_arm_pub = rospy.Publisher('/poi_from_arm_planner', Marker, queue_size=1) # poi pub
 
         self.poi_marker = self.make_marker(marker_type=8, frame_id='link_base', r= 1, g=0, b=1, a=1, x=0.04, y=0.04)
 
@@ -115,12 +115,13 @@ class PlannerNode:
         elif self.state == 4:
             try:
                 xarm = Manipulator()
-                # xarm.moveToInit()
+                xarm.moveToInit()
                 rospy.sleep(.1)
                 xarm.disconnect()
                 rospy.sleep(.1)
                 self.send_to_ee("open")
                 rospy.loginfo("Plan Execution: Initalization Complete")
+                rospy.sleep(15) # fake wait for solomon's laptop
                 self.planner_state_pub.publish(4)
             except:
                 rospy.loginfo("ERROR: UNABLE TO INITIALIZE AUTONOMOUS PROCEDURE")
@@ -132,10 +133,12 @@ class PlannerNode:
                 print("in state 5")
                 xarm = Manipulator()
                 # todo: need to change this to get the matched pepper poi
-                if self.poi:
+                if self.poi != None:
                     print("POI!!!!!!")
                     print(self.poi)
+
                     self.perception_communication_pub.publish(True)
+
                     self.poi_marker.pose.position.x = self.poi.x
                     self.poi_marker.pose.position.y = self.poi.y
                     self.poi_marker.pose.position.z = self.poi.z
@@ -143,6 +146,7 @@ class PlannerNode:
                     self.poi_from_arm_pub.publish(self.poi_marker)
 
                     xarm.moveToPoi(self.poi.x, self.poi.y, self.poi.z)
+                    rospy.sleep(5) # for us to see where it is 
 
                 else:
                     rospy.logwarn("NO POI DETCTED YET!!!")
@@ -150,8 +154,8 @@ class PlannerNode:
                 xarm.disconnect()
                 rospy.sleep(.1)
                 self.planner_state_pub.publish(5)
-            except:
-                rospy.logwarn("ERROR: UNABLE TO MOVE TO PREGRASP POSITION")
+            except Exception as e:
+                rospy.logwarn("ERROR: UNABLE TO MOVE TO PREGRASP POSITION", e)
                 self.state_pub.publish(10)
 
         # move to poi: open ee and place ee at cut/grip position

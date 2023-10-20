@@ -3,6 +3,8 @@
 import rospy
 from xarm.wrapper import XArmAPI
 from xarm.version import __version__
+from visualization_msgs.msg import Marker
+
 
 """
 Move the xArm using API calls 
@@ -27,6 +29,8 @@ class Manipulator:
         self.arm.connect()
         self.arm.set_mode(0)
         self.arm.set_state(0)
+
+        self.poi_marker = Marker()
 
     def moveToInit(self):
         """move to initial position"""
@@ -54,10 +58,18 @@ class Manipulator:
 
         # add offsets
         x -= self.pregrasp_offset # pregrasp offset
-        x -= 0.15 # ee length offset
+        x -= 0.15 # ee length offset    
+
+        self.poi_marker.pose.position.x = self.poi.x
+        self.poi_marker.pose.position.y = self.poi.y
+        self.poi_marker.pose.position.z = self.poi.z
+
+        self.poi_from_arm_pub.publish(self.poi_marker)
 
         # just using the orientation values from the init position for now
         self.arm.set_position(x,y,z,87.280666, -44.962863, 84.593953, wait=True, speed=20)
+
+
 
     def test(self):
         print("TESTING")
@@ -67,6 +79,18 @@ class Manipulator:
     
     def disconnect(self):
         self.arm.disconnect()
+    def make_marker(self, marker_type=8, frame_id='camera_color_optical_frame', r= 1, g=0, b=0, a=1, x=0.05, y=0.05):
+        marker = Marker()
+        marker.type = marker_type
+        marker.header.frame_id = frame_id
+        marker.color.r = r
+        marker.color.g = g
+        marker.color.b = b
+        marker.color.a = a
+        marker.scale.x = x
+        marker.scale.y = y
+
+        return marker
 
 
 if __name__ == '__main__':

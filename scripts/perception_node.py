@@ -181,13 +181,13 @@ class PerceptionNode:
                 self.fruit_detections = dict()
                 self.peduncle_detections = dict()
 
-                image = cv_image
+                self.image = cv_image
 
                 if self.pepper_detections != dict():
                     for i, pepper in self.pepper_detections.items():
                         rand_color = self.random_color()
-                        image = self.visualize_result(cv_image, pepper.pepper_fruit.segment, poi=None, color=rand_color)
-                        self.image = self.visualize_result(cv_image, pepper.pepper_peduncle.segment, poi=pepper.pepper_peduncle.poi_px, color=rand_color)
+                        self.image = self.visualize_result(self.image, pepper.pepper_fruit.segment, poi=None, color=rand_color)
+                        self.image = self.visualize_result(self.image, pepper.pepper_peduncle.segment, poi=pepper.pepper_peduncle.poi_px, color=rand_color)
 
                 try:
                     image_msg_bb = self.bridge.cv2_to_imgmsg(self.image, "rgb8")
@@ -268,20 +268,20 @@ class PerceptionNode:
                     self.pepper_marker_rs_pub.publish(self.pepper_marker_rs)
 
                     # X, Y, Z in base frame
-                    # X_b, Y_b, Z_b = self.transform_to_base_frame(X, Y, Z)
+                    X_b, Y_b, Z_b = self.transform_to_base_frame(X, Y, Z)
 
-                    # self.pepper_marker_base.points.append(Point(X_b, Y_b, Z_b))
-                    # self.pepper_marker_base.header.stamp = rospy.Time.now()
-                    # self.pepper_marker_base_pub.publish(self.pepper_marker_base)
+                    self.pepper_marker_base.points.append(Point(X_b, Y_b, Z_b))
+                    self.pepper_marker_base.header.stamp = rospy.Time.now()
+                    self.pepper_marker_base_pub.publish(self.pepper_marker_base)
 
-                    # if self.state != 5:
-                    #     self.poi.x = X_b
-                    #     self.poi.y = Y_b
-                    #     self.poi.z = Z_b
+                    if self.state != 5:
+                        self.poi.x = X_b
+                        self.poi.y = Y_b
+                        self.poi.z = Z_b
 
                     self.last_pepper_center = self.pepper_center
 
-                    x, y = np.where(mask == 1)
+                    x, y = np.where(np.array(mask.cpu()) == 1)
                     # print("there are {} points in the mask".format(len(x)))
                     xys = list(zip(x, y))
                     for x, y in xys:
@@ -304,7 +304,7 @@ class PerceptionNode:
                     # visualize the peduncle mask in rviz 
                     self.peduncle_mask_points = []
 
-                    x, y = np.where(mask == 1)
+                    x, y = np.where(np.array(mask.cpu()) == 1)
                     # print("there are {} points in the mask".format(len(x)))
                     xys = list(zip(x, y))
                     for x, y in xys:
@@ -345,11 +345,11 @@ class PerceptionNode:
                     self.peduncle_marker_rs_pub.publish(self.peduncle_marker_rs)
 
                     # Base frame
-                    # X_b, Y_b, Z_b = self.transform_to_base_frame(X, Y, Z)
+                    X_b, Y_b, Z_b = self.transform_to_base_frame(X, Y, Z)
 
-                    # self.peduncle_marker_base.points.append(Point(X_b, Y_b, Z_b))
-                    # self.peduncle_marker_base.header.stamp = rospy.Time.now()
-                    # self.peduncle_marker_base_pub.publish(self.peduncle_marker_base)
+                    self.peduncle_marker_base.points.append(Point(X_b, Y_b, Z_b))
+                    self.peduncle_marker_base.header.stamp = rospy.Time.now()
+                    self.peduncle_marker_base_pub.publish(self.peduncle_marker_base)
 
                     self.box_size = (box[2] - box[0]) * (box[3] - box[1])
 
@@ -374,14 +374,6 @@ class PerceptionNode:
         self.pepper_center_pub.publish(self.pepper_center)
         self.peduncle_center_pub.publish(self.peduncle_center)
 
-        try:
-            image_msg_bb = self.bridge.cv2_to_imgmsg(image, "rgb8")
-            self.image_pub.publish(image_msg_bb)
-
-        except cv_bridge.CvBridgeError as e:
-            rospy.logerr(
-                "Error converting back to image message: {}".format(e))
-            return
 
     def depth_callback(self, msg):
         try:

@@ -88,6 +88,16 @@ RUN sudo apt-get install -y ros-noetic-moveit
 RUN apt-get -y update && apt-get -y upgrade && apt-get -y dist-upgrade
 RUN apt-get install -y libglfw3-dev libgl1-mesa-dev libglu1-mesa-dev at
 RUN apt-get install ros-noetic-moveit ros-noetic-moveit-plugins ros-noetic-moveit-planners
+RUN apt-get install -y ros-noetic-moveit-servo
+
+RUN apt-get install -y ros-noetic-joy
 
 RUN source /opt/ros/noetic/setup.bash
+
+RUN cw && git clone https://github.com/ROBOTIS-GIT/DynamixelSDK.git
+RUN cw && git clone https://github.com/ROBOTIS-GIT/dynamixel-workbench.git
+RUN cw && git clone https://github.com/ROBOTIS-GIT/dynamixel-workbench-msgs.git
+
+RUN cw && git clone git clone https://github.com/xArm-Developer/xArm-Python-SDK.git && cd xArm-Python-SDK/ && python3 setup.py install 
+
 CMD cm

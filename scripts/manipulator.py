@@ -57,12 +57,12 @@ class Manipulator:
         z *= 1000
 
         # add offsets
-        x -= self.pregrasp_offset # pregrasp offset
-        x -= 0.15 # ee length offset    
+        x -= self.pregrasp_offset*1000 # pregrasp offset
+        x -= 0.15*1000 # ee length offset    
 
-        self.poi_marker.pose.position.x = self.poi.x
-        self.poi_marker.pose.position.y = self.poi.y
-        self.poi_marker.pose.position.z = self.poi.z
+        self.poi_marker.pose.position.x = self.poi.x / 1000
+        self.poi_marker.pose.position.y = self.poi.y / 1000
+        self.poi_marker.pose.position.z = self.poi.z / 1000
 
         self.poi_from_arm_pub.publish(self.poi_marker)
 

@@ -245,7 +245,7 @@ class PerceptionNode:
                 box = result.boxes.xyxy[i]   
                 cls = result.boxes.cls[i] # 0 is pepper, 1 is peduncle
 
-                if cls == 0: # it is a pepper
+                if cls == 1: # it is a pepper
                     pepper_detection = PepperFruit(self.fruit_count, segment=segment)
 
                     # TODO change (this is just a placeholder)

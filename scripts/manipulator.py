@@ -21,8 +21,10 @@ class Manipulator:
         # self.init_pose = rospy.get_param('/init_pose')
         # self.basket_pose = rospy.get_param('/basket_pose')
         # todo: put these in launch file
-        self.init_pose = [200, 0, 500, 87.280666, -44.962863, 84.593953]
-        self.basket_pose = [201.56279, -168.17691, 513.328613, 85.901671, -44.935476, 45.608758]
+        # self.init_pose = [200, 0, 500, 87.280666, -44.962863, 84.593953]# ip: 14
+        self.init_pose = [156, 0.0, 475, -90, 45, -90] # ip:13, upside-down
+        # self.basket_pose = [201.56279, -168.17691, 513.328613, 85.901671, -44.935476, 45.608758] # ip: 14
+        self.basket_pose = [201.56279, -168.17691, 513.328613, -90, 45, -90]# ip: 13
 
         # initialize xArm
         self.arm = XArmAPI(self.ip)
@@ -58,7 +60,7 @@ class Manipulator:
         x -= 0.15 # ee length offset    
 
         # just using the orientation values from the init position for now
-        self.arm.set_position(x * 1000 ,y * 1000 ,z * 1000 ,87.280666, -44.962863, 84.593953, wait=True, speed=20)
+        self.arm.set_position(x * 1000 ,y * 1000 ,z * 1000 ,*self.init_pose[3:], wait=True, speed=20)
 
 
     def test(self):
@@ -91,6 +93,7 @@ if __name__ == '__main__':
         while not rospy.is_shutdown():
             # xarm.test()
             rospy.sleep(0.1)
+            # rospy.logwarn(xarm.arm.get_position())
 
     except rospy.ROSInterruptException:
         pass

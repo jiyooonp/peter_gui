@@ -343,6 +343,8 @@ class PerceptionNode:
                     self.peduncle_center.y = poi_y
 
                     self.peduncle_center.z = self.get_depth(int(self.peduncle_center.x), int(self.peduncle_center.y))
+                    if self.peduncle_center.z < 0.2:
+                        continue
                     
                     # X, Y, Z in RS axes
                     X, Y, Z = self.get_3D_coords(

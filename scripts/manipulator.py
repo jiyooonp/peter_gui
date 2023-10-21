@@ -52,10 +52,8 @@ class Manipulator:
 
     def moveToPregrasp(self,x,y,z):
         # convert to mm from m
-        x *= 1000
-        y *= 1000
-        z *= 1000
-
+        # x is forward y is left z is up
+        print("before x: ", x)
         # add offsets
         x -= self.pregrasp_offset*1000 # pregrasp offset
         x -= 0.15*1000 # ee length offset    

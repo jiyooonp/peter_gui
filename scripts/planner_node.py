@@ -114,12 +114,13 @@ class PlannerNode:
         elif self.state == 4:
             try:
                 xarm = Manipulator()
-                # xarm.moveToInit()
+                xarm.moveToInit()
                 rospy.sleep(.1)
                 xarm.disconnect()
                 rospy.sleep(.1)
                 self.send_to_ee("open")
                 rospy.loginfo("Plan Execution: Initalization Complete")
+                rospy.sleep(15) # fake wait for solomon's laptop
                 self.planner_state_pub.publish(4)
             except:
                 rospy.loginfo("ERROR: UNABLE TO INITIALIZE AUTONOMOUS PROCEDURE")
@@ -134,6 +135,7 @@ class PlannerNode:
                 if self.poi:
                     rospy.logwarn(f"POI!!!!!! >>  {self.poi}")
                     self.perception_communication_pub.publish(True)
+
                     self.poi_marker.pose.position.x = self.poi.x
                     self.poi_marker.pose.position.y = self.poi.y
                     self.poi_marker.pose.position.z = self.poi.z

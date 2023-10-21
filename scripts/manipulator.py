@@ -53,13 +53,12 @@ class Manipulator:
     def moveToPregrasp(self,x,y,z):
         # convert to mm from m
         # x is forward y is left z is up
-        print("before x: ", x)
         # add offsets
-        x -= self.pregrasp_offset*1000 # pregrasp offset
-        x -= 0.15*1000 # ee length offset    
+        x -= self.pregrasp_offset # pregrasp offset
+        x -= 0.15 # ee length offset    
 
         # just using the orientation values from the init position for now
-        self.arm.set_position(x,y,z,87.280666, -44.962863, 84.593953, wait=True, speed=20)
+        self.arm.set_position(x * 1000 ,y * 1000 ,z * 1000 ,87.280666, -44.962863, 84.593953, wait=True, speed=20)
 
 
     def test(self):
@@ -70,6 +69,7 @@ class Manipulator:
     
     def disconnect(self):
         self.arm.disconnect()
+        
     def make_marker(self, marker_type=8, frame_id='camera_color_optical_frame', r= 1, g=0, b=0, a=1, x=0.05, y=0.05):
         marker = Marker()
         marker.type = marker_type

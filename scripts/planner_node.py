@@ -65,7 +65,6 @@ class PlannerNode:
         """Callback for POI message"""
         # update joy state
         self.poi = data
-        self.poi_from_arm_pub.publish(self.poi_marker)
     
     def send_to_ee(self, command):
         # send commands to open, harvest, or close
@@ -120,7 +119,7 @@ class PlannerNode:
                 rospy.sleep(.1)
                 self.send_to_ee("open")
                 rospy.loginfo("Plan Execution: Initalization Complete")
-                rospy.sleep(15) # fake wait for solomon's laptop
+                rospy.sleep(3) # fake wait for solomon's laptop
                 self.planner_state_pub.publish(4)
             except:
                 rospy.loginfo("ERROR: UNABLE TO INITIALIZE AUTONOMOUS PROCEDURE")
@@ -135,13 +134,6 @@ class PlannerNode:
                 if self.poi:
                     rospy.logwarn(f"POI!!!!!! >>  {self.poi}")
                     self.perception_communication_pub.publish(True)
-
-                    self.poi_marker.pose.position.x = self.poi.x
-                    self.poi_marker.pose.position.y = self.poi.y
-                    self.poi_marker.pose.position.z = self.poi.z
-
-                    self.poi_from_arm_pub.publish(self.poi_marker)
-
                     xarm.moveToPregrasp(self.poi.x, self.poi.y, self.poi.z)
 
                 else:

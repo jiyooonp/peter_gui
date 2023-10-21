@@ -7,20 +7,13 @@ Hwrist_rot45:
    [     0,         0, 1, 0],
    [     0,         0, 0, 1]]
 
-# rot into to real sense frame (90 z+)
-Hreal_rot:
-  [[  1, 0, 0, 0], 
-   [  0, 1, 0, 0],
-   [  0, 0, 1, 0],
-   [  0, 0, 0, 1]] # in m
-
 
 # translate to real sense frame (still not aligned)
 Hrot45_real:
-  [[        1,   0,         0,  0],
-   [        0,   1,         0, -0.03155],
+  [[        1,   0,         0,  0.03155],
+   [        0,   1,         0,        0],
    [        0,   0,         1, 0.098927],
-   [        0,   0,         0, 1]] # in m
+   [        0,   0,         0,        1]] # in m
 
 
 # align with camera link

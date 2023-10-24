@@ -16,6 +16,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image as PILImage
 
+import message_filters
+
 import tf2_ros
 from tf.transformations import quaternion_matrix
 

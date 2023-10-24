@@ -21,7 +21,7 @@ class Manipulator:
         # todo: put these in config file
         # self.init_pose = [200, 0, 500, 87.280666, -44.962863, 84.593953]# ip: 14
         self.init_pose = [156, 0.0, 475, -90, 45, -90] # ip:13, upside-down
-        self.basket_pose = [201.56279, -168.17691, 513.328613, -90, 45, -90]# ip: 13
+        self.basket_pose = [201.56279, -168.17691, 513.328613, -90, 45, -90] # ip: 13
         self.basket_pregrasp = []
 
         # initialize xArm
@@ -50,9 +50,6 @@ class Manipulator:
         self.arm.set_position(x+dist, y, z, roll, pitch, yaw, wait=True) # todo: test out relative=True
 
     def moveToPregrasp(self,x,y,z):
-        # convert to mm from m
-        # x is forward y is left z is up
-        # add offsets
         x -= self.pregrasp_offset # pregrasp offset
         x -= self.ee_length_offset # ee length offset
 
@@ -93,7 +90,7 @@ if __name__ == '__main__':
     try:
         xarm = Manipulator()
         while not rospy.is_shutdown():
-            xarm.test()
+            # xarm.test()
             rospy.sleep(0.1)
             # rospy.logwarn(xarm.arm.get_position())
 

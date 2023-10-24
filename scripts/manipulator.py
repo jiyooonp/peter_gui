@@ -62,11 +62,14 @@ class Manipulator:
         # just using the orientation values from the init position for now
         self.arm.set_position(x * 1000 ,y * 1000 ,z * 1000 ,*self.init_pose[3:], wait=True, speed=20)
 
+    def basketTesting(self):
+        current_pos = self.arm.get_position()[1]
 
     def test(self):
         print("TESTING")
-        self.moveToInit()
-        self.moveToBasket(0.15)
+        # self.moveToInit()
+        # self.moveToBasket(0.15)
+
         return
     
     def disconnect(self):
@@ -91,7 +94,7 @@ if __name__ == '__main__':
     try:
         xarm = Manipulator()
         while not rospy.is_shutdown():
-            # xarm.test()
+            xarm.test()
             rospy.sleep(0.1)
             # rospy.logwarn(xarm.arm.get_position())
 

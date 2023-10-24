@@ -16,15 +16,13 @@ class Manipulator:
     def __init__(self):
         # initialize values
         self.ip = rospy.get_param('xarm_robot_ip')
-        # self.ip = '192.168.1.214'
         self.pregrasp_offset = 0.15
-        # self.init_pose = rospy.get_param('/init_pose')
-        # self.basket_pose = rospy.get_param('/basket_pose')
-        # todo: put these in launch file
+        self.ee_length_offset = 0.15
+        # todo: put these in config file
         # self.init_pose = [200, 0, 500, 87.280666, -44.962863, 84.593953]# ip: 14
         self.init_pose = [156, 0.0, 475, -90, 45, -90] # ip:13, upside-down
-        # self.basket_pose = [201.56279, -168.17691, 513.328613, 85.901671, -44.935476, 45.608758] # ip: 14
         self.basket_pose = [201.56279, -168.17691, 513.328613, -90, 45, -90]# ip: 13
+        self.basket_pregrasp = []
 
         # initialize xArm
         self.arm = XArmAPI(self.ip)
@@ -32,7 +30,6 @@ class Manipulator:
         self.arm.connect()
         self.arm.set_mode(0)
         self.arm.set_state(0)
-
 
     def moveToInit(self):
         """move to initial position"""
@@ -57,19 +54,21 @@ class Manipulator:
         # x is forward y is left z is up
         # add offsets
         x -= self.pregrasp_offset # pregrasp offset
-        x -= 0.15 # ee length offset    
+        x -= self.ee_length_offset # ee length offset
 
         # just using the orientation values from the init position for now
         self.arm.set_position(x * 1000 ,y * 1000 ,z * 1000 ,*self.init_pose[3:], wait=True, speed=20)
 
     def basketTesting(self):
-        current_pos = self.arm.get_position()[1]
+        # current_pos = self.arm.get_position()[1]
+        self.moveToInit() # move to init pose
+        self.arm.set_position() # move to basket pre-grasp
+        self.cartesianMove(-0.15) # move forward to basket
 
     def test(self):
         print("TESTING")
         # self.moveToInit()
-        # self.moveToBasket(0.15)
-
+        self.basketTesting()
         return
     
     def disconnect(self):

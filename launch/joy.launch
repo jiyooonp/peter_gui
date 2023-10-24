@@ -1,13 +1,14 @@
 <launch>
 
   <!-- params -->
-  <arg name="robot_ip" default="192.168.1.213"/>
+  <arg name="robot_ip" default="192.168.1.214"/>
   <arg name="joy_dev" default="/dev/input/js0" />
   <arg name="joystick" default="true" />
 
   <!-- <param name="tf_yaml" type="string" value="~/Documents/iowa_ws/src/ISU_Demo_Perception/scripts/flat_mount_tf.yaml" /> -->
   <param name="tf_yaml" type="string" value="/config/flat_mount_tf.yaml" />
   <param name="xarm_robot_ip" type="string" value="$(arg robot_ip)"/>
+  <param name ="/use_sim_time" value="false"/>
 
   <!--joystick node-->
   <node name="joystick_node" pkg="joy" type="joy_node"></node>

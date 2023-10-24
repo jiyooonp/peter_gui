@@ -163,7 +163,6 @@ class PerceptionNode:
         print(self.xarm_moving)
 
     def image_callback(self, msg):
-
         try:
 
             # Convert ROS Image message to OpenCV image
@@ -248,9 +247,8 @@ class PerceptionNode:
                 if cls == 1: # it is a pepper
                     pepper_detection = PepperFruit(self.fruit_count, segment=segment)
 
-                    # TODO change (this is just a placeholder)
                     xywh = result.boxes.xywh 
-                    xywh = xywh[0].cpu().numpy()
+                    xywh = xywh[i].cpu().numpy()
                     # Switch from YOLO axes to NumPy axes
                     xywh[0], xywh[1] = xywh[1], xywh[0]
 

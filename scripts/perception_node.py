@@ -93,8 +93,8 @@ class PerceptionNode:
         # Make marker for visualization
         self.peduncle_marker_rs =  self.make_marker(frame_id="camera_color_optical_frame")
         self.peduncle_marker_base =  self.make_marker(marker_type=8, frame_id='link_base', r= 1, g=0, b=1, a=1, x=0.02, y=0.01)
-        self.pepper_marker_rs =  self.make_marker(marker_type=8, frame_id='camera_color_optical_frame', r= 1, g=0, b=0, a=1, x=0.05, y=0.05)
-        self.pepper_marker_base =  self.make_marker(marker_type=8, frame_id='link_base', r= 0, g=1, b=0, a=1, x=0.06, y=0.06)
+        self.fruit_marker_rs =  self.make_marker(marker_type=8, frame_id='camera_color_optical_frame', r= 1, g=0, b=0, a=1, x=0.05, y=0.05)
+        self.fruit_marker_base =  self.make_marker(marker_type=8, frame_id='link_base', r= 0, g=1, b=0, a=1, x=0.06, y=0.06)
 
         self.peduncle_mask_rs = self.make_marker(marker_type=8, frame_id='camera_color_optical_frame', r= 1, g=0, b=0, a=1, x=0.02, y=0.02)
 
@@ -105,8 +105,8 @@ class PerceptionNode:
         self.peduncle_marker_rs_pub = rospy.Publisher("/visualization_peduncle_marker_rs", Marker, queue_size=1)
         self.peduncle_marker_base_pub = rospy.Publisher("/visualization_peduncle_marker_base", Marker, queue_size=1)
 
-        self.pepper_marker_rs_pub = rospy.Publisher("/visualization_pepper_marker_rs", Marker, queue_size=1)
-        self.pepper_marker_base_pub = rospy.Publisher("/visualization_pepper_marker_base", Marker, queue_size=1)
+        self.fruit_marker_rs_pub = rospy.Publisher("/visualization_pepper_marker_rs", Marker, queue_size=1)
+        self.fruit_marker_base_pub = rospy.Publisher("/visualization_pepper_marker_base", Marker, queue_size=1)
 
         self.peduncle_mask_pub = rospy.Publisher("/visualization_peduncle_mask", Marker, queue_size=1)
 
@@ -139,15 +139,15 @@ class PerceptionNode:
         
         self.detection_void_count = 0
         self.last_peduncle_center = Point()
-        self.last_pepper_center = Point()
+        self.last_fruit_center = Point()
 
         # store the results of YOLO
         self.fruit_count = 0
         self.peduncle_count = 0
         self.pepper_count = 0
+        self.fruit_detections = dict()
         self.peduncle_detections = dict()
         self.pepper_detections = dict()
-        self.fruit_detections = dict()
 
 
         # visualization
@@ -186,6 +186,12 @@ class PerceptionNode:
                         self.pepper_detections[self.pepper_count] = pepper
                         self.pepper_count += 1
 
+                self.calculate_pepper_poses()
+                self.choose_pepper()
+                # self.plot_masks()
+
+                self.fruit_count = 0
+                self.peduncle_count = 0
                 self.fruit_detections = dict()
                 self.peduncle_detections = dict()
 
@@ -205,188 +211,147 @@ class PerceptionNode:
                     rospy.logerr(
                         "Error converting back to image message: {}".format(e))
                     
+                self.pepper_count = 0
                 self.pepper_detections = dict()
     
         except cv_bridge.CvBridgeError as e:
             rospy.logerr("Error converting from image message: {}".format(e))
             return
-        
-
+            
+ 
     def run_yolo(self, image):
 
         results_both = self.yolo(image, verbose=False)
+        result = results_both[0]                                # only take the first image because there is only one image
 
-        self.peduncle_dict = dict()
-        peduncle_count = 0
+        if len(result.boxes) != 0:                              # if there is a detection
 
-        self.pepper_center = Point() # TODO can we just do Point(x=-1, y=-1, z=0)?
-        self.pepper_center.x = -1 # Assume there are no detections initially
-        self.pepper_center.y = -1
-        self.pepper_center.z = 0
+            for i in range(len(result.masks)):                  # for each mask
+                segment = result.masks.xyn[i]                   # only boundary of mask
+                mask = result.masks.data[i]                     # mask with 1s and 0s
+                cls = result.boxes.cls[i]                       # 0 is pepper, 1 is peduncle
 
-        self.peduncle_center = Point() # TODO can we just do Point(x=-1, y=-1, z=0)?
-        self.peduncle_center.x = -1 # self.img_width/2
-        self.peduncle_center.y = -1 # self.img_height/2
-        self.peduncle_center.z = 0
-
-        self.pepper_marker_rs.points = []
-        self.pepper_marker_base.points = []
-        self.peduncle_marker_rs.points = []
-        self.peduncle_marker_base.points = []
-        self.peduncle_mask_rs.points = []
-        result = results_both[0] # only take the first image because there is only one image
-        # import ipdb;
-        # ipdb.set_trace()
-        if len(result.boxes) != 0: # if there is a detection
-
-            for i in range(len(result.masks)): # for each mask
-                segment = result.masks.xyn[i] # only boundary of mask
-                mask = result.masks.data[i]       # mask with 1s and 0s
-                box = result.boxes.xyxy[i]   
-                cls = result.boxes.cls[i] # 0 is pepper, 1 is peduncle
-
-                if cls == 1: # it is a pepper
-                    pepper_detection = PepperFruit(self.fruit_count, segment=segment)
-
-                    # TODO change (this is just a placeholder)
-                    xywh = result.boxes.xywh 
-                    xywh = xywh[0].cpu().numpy()
-                    # Switch from YOLO axes to NumPy axes
-                    xywh[0], xywh[1] = xywh[1], xywh[0]
-
-                    pepper_detection.xywh = xywh
+                xywh = result.boxes.xywh[i].cpu().numpy()
+                xywh[0], xywh[1] = xywh[1], xywh[0]             # Switch from YOLO axes to NumPy axes
+                
+                if cls == 1:                                    # it is a pepper
+                    pepper_detection = PepperFruit(self.fruit_count, xywh=xywh, mask=np.array(mask.cpu()), segment=segment)
                     self.fruit_detections[self.fruit_count] = pepper_detection
                     self.fruit_count+= 1
 
-                    # These are in RealSense coordinate system
-                    self.pepper_center.x = int((box[1] + box[3]) / 2)
-                    self.pepper_center.y = int((box[0] + box[2]) / 2)
-
-                    # self.peduncle_offset = int((box[3] - box[1]) / 3)
-                    # self.pepper_center.x -= self.peduncle_offset
-
-                    self.pepper_center.z = self.get_depth(int(self.pepper_center.x), int(self.pepper_center.y))
-
-                    # X, Y, Z in RS frame
-                    X, Y, Z = self.get_3D_coords(
-                        self.pepper_center.x, self.pepper_center.y, self.pepper_center.z)
-                    
-                    self.pepper_marker_rs.points.append(Point(X, Y, Z))
-                    self.pepper_marker_rs.header.stamp = rospy.Time.now()
-                    self.pepper_marker_rs_pub.publish(self.pepper_marker_rs)
-
-                    # X, Y, Z in base frame
-                    X_b, Y_b, Z_b = self.transform_to_base_frame(X, Y, Z)
-
-                    self.pepper_marker_base.points.append(Point(X_b, Y_b, Z_b))
-                    self.pepper_marker_base.header.stamp = rospy.Time.now()
-                    self.pepper_marker_base_pub.publish(self.pepper_marker_base)
-
-                    # if self.state != 5:
-                    #     self.poi.x = X_b
-                    #     self.poi.y = Y_b
-                    #     self.poi.z = Z_b
-
-                    self.last_pepper_center = self.pepper_center
-
-                    x, y = np.where(np.array(mask.cpu()) == 1)
-                    # print("there are {} points in the mask".format(len(x)))
-                    xys = list(zip(x, y))
-                    for x, y in xys:
-                        z = self.depth_image[x, y] * 0.001
-                        if z == 0:
-                            continue
-                        X, Y, Z = self.get_3D_coords(
-                            x, y, z)
-                        point = Point(X, Y, Z)
-                        self.vis_pepper_list.append((X, Y, Z))
-
-                else: # it is a peduncle
-                    
-                    # TODO add pepper xywh
-                    peduncle_detection = PepperPeduncle(self.peduncle_count, np.array(mask.cpu()), segment=segment)
-                    xywh = result.boxes.xywh[i].cpu().numpy()
-                    # Switch from YOLO axes to NumPy axes
-                    xywh[0], xywh[1] = xywh[1], xywh[0]
-
-                    # visualize the peduncle mask in rviz 
-                    self.peduncle_mask_points = []
-
-                    x, y = np.where(np.array(mask.cpu()) == 1)
-                    # print("there are {} points in the mask".format(len(x)))
-                    xys = list(zip(x, y))
-                    for x, y in xys:
-                        z = self.depth_image[x, y] * 0.001
-                        if z == 0:
-                            continue
-                        X, Y, Z = self.get_3D_coords(
-                            x, y, z)
-                        point = Point(X, Y, Z)
-                        self.peduncle_mask_points.append(point)
-                        self.vis_peduncle_list.append((X, Y, Z))
-                    for point in self.peduncle_mask_points:
-                        self.peduncle_mask_rs.points.append(point)
-                    self.peduncle_mask_pub.publish(self.peduncle_mask_rs)
-                    self.peduncle_mask_rs.points = []
-
-                    peduncle_detection.xywh = xywh
-                    poi_x, poi_y = peduncle_detection.set_point_of_interaction()
-
-                    if poi_x == -1 and poi_y == -1:
-                        continue
-
-                    self.peduncle_detections[peduncle_count] = peduncle_detection
-                    peduncle_count += 1
+                else:                                           # it is a peduncle
+                    peduncle_detection = PepperPeduncle(self.peduncle_count, xywh=xywh, mask=np.array(mask.cpu()), segment=segment)
+                    self.peduncle_detections[self.peduncle_count] = peduncle_detection
+                    self.peduncle_count += 1
                                         
-                    # These are in NumPy axes
-                    self.peduncle_center.x = poi_x
-                    self.peduncle_center.y = poi_y
-
-                    self.peduncle_center.z = self.get_depth(int(self.peduncle_center.x), int(self.peduncle_center.y))
-                    if self.peduncle_center.z < 0.2:
-                        continue
-                    
-                    # X, Y, Z in RS axes
-                    X, Y, Z = self.get_3D_coords(
-                        self.peduncle_center.x, self.peduncle_center.y, self.peduncle_center.z)
-
-                    self.peduncle_marker_rs.points.append(Point(X, Y, Z))
-                    self.peduncle_marker_rs.header.stamp = rospy.Time.now()
-                    self.peduncle_marker_rs_pub.publish(self.peduncle_marker_rs)
-
-                    # Base frame
-                    X_b, Y_b, Z_b = self.transform_to_base_frame(X, Y, Z)
-
-                    self.peduncle_marker_base.points.append(Point(X_b, Y_b, Z_b))
-                    self.peduncle_marker_base.header.stamp = rospy.Time.now()
-                    self.peduncle_marker_base_pub.publish(self.peduncle_marker_base)
-                    
-                    if self.state != 5:
-                        self.poi.x = X_b
-                        self.poi.y = Y_b
-                        self.poi.z = Z_b
-
-                    self.box_size = (box[2] - box[0]) * (box[3] - box[1])
-
-                    self.last_peduncle_center = self.peduncle_center
-
-            # plot_3d_points(self.vis_pepper_list, self.vis_peduncle_list, self.image, "/root/catkin_ws/both"+str(self.image_count)+".png")
-            self.vis_peduncle_list = []
-            self.vis_pepper_list = []
-
             self.image_count+=1
-        else: 
-            # TODO probably don't need this anymore 
-            self.detection_void_count += 1
-            if self.detection_void_count > 100:
-                self.peduncle_center.y = self.last_peduncle_center.y
-                self.peduncle_center.x = 240
-                self.pepper_center.y = self.last_pepper_center.y
-                self.pepper_center.x = 240
-                self.detection_void_count = 0
+
+    
+    def calculate_pepper_poses(self):
+        for i, pepper in self.pepper_detections.items():
+            fruit = pepper.pepper_fruit
+            peduncle = pepper.pepper_peduncle
+
+            fruit.xyz_rs, fruit.xyz_base = self.fruit_pose(fruit)
+            peduncle.xyz_rs, peduncle.xyz_base = self.peduncle_pose(peduncle, fruit.xyz_rs[2])
+
+            if peduncle.xyz_rs is None or peduncle.xyz_base is None:
+                del self.pepper_detections[i]
+
+        self.fruit_marker_rs.header.stamp = rospy.Time.now()
+        self.fruit_marker_rs_pub.publish(self.fruit_marker_rs)
+        self.fruit_marker_base.header.stamp = rospy.Time.now()
+        self.fruit_marker_base_pub.publish(self.fruit_marker_base)
+
+        self.peduncle_marker_rs.header.stamp = rospy.Time.now()
+        self.peduncle_marker_rs_pub.publish(self.peduncle_marker_rs)
+        self.peduncle_marker_base.header.stamp = rospy.Time.now()
+        self.peduncle_marker_base_pub.publish(self.peduncle_marker_base)
+
+    
+    def fruit_pose(self, fruit):
+        x, y, w, h = fruit.xywh
+        z = self.get_depth(x, y)
+
+        # X, Y, Z in RS frame
+        X_rs, Y_rs, Z_rs = self.get_3D_coords(x, y, z)
+        self.fruit_marker_rs.points.append(Point(X_rs, Y_rs, Z_rs))
+        
+        # X, Y, Z in base frame
+        X_b, Y_b, Z_b = self.transform_to_base_frame(X_rs, Y_rs, Z_rs)
+        self.fruit_marker_base.points.append(Point(X_b, Y_b, Z_b))
+        
+        return (X_rs, Y_rs, Z_rs), (X_b, Y_b, Z_b)
+    
+
+    def peduncle_pose(self, peduncle, pepper_depth):
+        x, y = peduncle.set_point_of_interaction()
+
+        if x == -1 and y == -1:
+            return None, None
+        
+        z = min(self.get_depth(x, y), pepper_depth + 0.02)      # TODO tune this
+                
+        # X, Y, Z in RS axes
+        X_rs, Y_rs, Z_rs = self.get_3D_coords(x, y, z)
+        self.peduncle_marker_rs.points.append(Point(X_rs, Y_rs, Z_rs))
+        
+        # Base frame
+        X_b, Y_b, Z_b = self.transform_to_base_frame(X_rs, Y_rs, Z_rs)
+        self.peduncle_marker_base.points.append(Point(X_b, Y_b, Z_b))
+        
+        return (X_rs, Y_rs, Z_rs), (X_b, Y_b, Z_b)
+    
+
+    def choose_pepper(self):
+        # TODO improve with prioritization
+        if self.pepper_detections != dict():
+            pepper = self.pepper_detections[0]
+            peduncle = pepper.pepper_peduncle
+
+            if self.state != 5:
+                self.poi.x = peduncle.xyz_base[0]
+                self.poi.y = peduncle.xyz_base[1]
+                self.poi.z = peduncle.xyz_base[2]
+
         self.poi_pub.publish(self.poi)
-        self.pepper_center_pub.publish(self.pepper_center)
-        self.peduncle_center_pub.publish(self.peduncle_center)
+    
+
+    def plot_masks(self):
+        for _, pepper in self.pepper_detections.items():
+            fruit = pepper.pepper_fruit
+            peduncle = pepper.pepper_peduncle
+
+            x, y = np.where(fruit.mask == 1)
+
+            # print("there are {} points in the mask".format(len(x)))
+            xys = list(zip(x, y))
+            for x, y in xys:
+                z = self.depth_image[x, y] * 0.001
+                if z == 0:
+                    continue
+                X, Y, Z = self.get_3D_coords(x, y, z)
+                self.vis_pepper_list.append((X, Y, Z))
+
+            # visualize the peduncle mask in rviz 
+            x, y = np.where(peduncle.mask == 1)
+
+            # print("there are {} points in the mask".format(len(x)))
+            xys = list(zip(x, y))
+            for x, y in xys:
+                z = self.depth_image[x, y] * 0.001
+                if z == 0:
+                    continue
+                X, Y, Z = self.get_3D_coords(x, y, z)
+                # self.peduncle_mask_rs.points.append(Point(X, Y, Z))
+                self.vis_peduncle_list.append((X, Y, Z))
+            
+            # self.peduncle_mask_pub.publish(self.peduncle_mask_rs)     # TODO remove if not used
+            # self.peduncle_mask_rs.points = []
+
+        plot_3d_points(self.vis_pepper_list, self.vis_peduncle_list, self.image, "/root/catkin_ws/both"+str(self.image_count)+".png")
+        self.vis_peduncle_list = []
+        self.vis_pepper_list = []
 
 
     def depth_callback(self, msg):

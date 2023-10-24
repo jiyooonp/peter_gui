@@ -117,15 +117,17 @@ class Curve:
 
 class PepperPeduncle:
 
-    def __init__(self, number: int, mask=None, conf=None, percentage=0.5, segment=None):
+    def __init__(self, number: int, mask=None, conf=None, percentage=0.5, segment=None, xywh=None):
         self._number: int = number
         self._mask = mask
         self._conf: float = conf
         self._percentage = percentage
-        self._xywh = None
+        self._xywh = xywh
         self._curve = Curve()
         self._poi_px = None
         self.segment = segment
+        self._xyz_rs = None
+        self._xyz_base = None
 
     @property
     def number(self):
@@ -173,6 +175,22 @@ class PepperPeduncle:
     def poi_px(self, poi_px):
         self._poi_px = poi_px
 
+    @property
+    def xyz_rs(self):
+        return self._xyz_rs
+    
+    @xyz_rs.setter
+    def xyz_rs(self, xyz_rs):
+        self._xyz_rs = xyz_rs
+
+    @property
+    def xyz_base(self):
+        return self._xyz_base
+    
+    @xyz_base.setter
+    def xyz_base(self, xyz_base):
+        self._xyz_base = xyz_base
+
 
     def determine_poi(self, total_curve_length):
         for idx in range(len(self._curve.curve_y)):
@@ -199,16 +217,17 @@ class PepperPeduncle:
 
 
 class PepperFruit:
-    def __init__(self, number:int, xywh=None, conf=0.0, segment=None):
+    def __init__(self, number:int, xywh=None, conf=0.0, segment=None, mask=None):
         self._number: int = number
 
         self._xywh: Optional[List[float]] = xywh # TODO: change to xyxy
         self._conf: float = conf
-        self._xyz = None
+        self._xyz_rs = None
+        self._xyz_base = None
         self._true_positive: bool = False
         self._occurences: int = 1
-        self._associated_fruits: List[(int, PepperFruit)] = list()
         self._parent_pepper: int = None
+        self._mask = mask
         self.segment = segment
 
     @property
@@ -232,12 +251,20 @@ class PepperFruit:
         self._conf = conf
 
     @property
-    def xyz(self):
-        return self._xyz
+    def xyz_rs(self):
+        return self._xyz_rs
     
-    @xyz.setter
-    def xyz(self, xyz):
-        self._xyz = xyz
+    @xyz_rs.setter
+    def xyz_rs(self, xyz_rs):
+        self._xyz_rs = xyz_rs
+
+    @property
+    def xyz_base(self):
+        return self._xyz_base
+    
+    @xyz_base.setter
+    def xyz_base(self, xyz_base):
+        self._xyz_base = xyz_base
 
     @property
     def true_positive(self):
@@ -264,11 +291,12 @@ class PepperFruit:
         self._parent_pepper = parent_pepper
 
     @property
-    def associated_fruits(self):
-        return self._associated_fruits
+    def mask(self):
+        return self._mask
     
-    def add_associated_fruit(self, frame_number, fruit):
-        self._associated_fruits.append((frame_number, fruit))
+    @mask.setter
+    def mask(self, mask):
+        self._mask = mask
 
     def __str__(self):
         return f"Pepper(number={self.number}, xywh={self.xywh}, conf={self._conf})"
@@ -312,22 +340,3 @@ class Pepper:
     def __str__(self):
         return f"Pepper #{self.number}"
 
-
-'''
-
-[ERROR] [1697218655.758527]: bad callback: <bound method PerceptionNode.image_callback of <__main__.PerceptionNode object at 0x7f65ee81deb0>>
-Traceback (most recent call last):
-  File "/opt/ros/noetic/lib/python3/dist-packages/rospy/topics.py", line 750, in _invoke_callback
-    cb(msg)
-  File "/home/sridevi/Documents/iowa_ws/src/ISU_Demo_Perception/scripts/perception_node.py", line 111, in image_callback
-    self.run_yolo(cv_image)
-  File "/home/sridevi/Documents/iowa_ws/src/ISU_Demo_Perception/scripts/perception_node.py", line 231, in run_yolo
-    poi_x, poi_y = peduncle_detection.set_point_of_interaction()
-  File "/home/sridevi/Documents/iowa_ws/src/ISU_Demo_Perception/scripts/pepper_util.py", line 179, in set_point_of_interaction
-    self._curve.fit_curve_to_mask(self._mask)
-  File "/home/sridevi/Documents/iowa_ws/src/ISU_Demo_Perception/scripts/pepper_util.py", line 78, in fit_curve_to_mask
-    params1, _ = curve_fit(self.parabola, y, x)
-  File "/home/sridevi/.local/lib/python3.8/site-packages/scipy/optimize/_minpack_py.py", line 832, in curve_fit
-    raise TypeError(f"The number of func parameters={n} must not"
-TypeError: The number of func parameters=3 must not exceed the number of data points=2
-'''

@@ -186,7 +186,9 @@ class PerceptionNode:
                         self.pepper_detections[self.pepper_count] = pepper
                         self.pepper_count += 1
 
+                self.empty_visualization_markers()
                 self.calculate_pepper_poses()
+                self.publish_visualization_markers()
                 self.choose_pepper()
                 # self.plot_masks()
 
@@ -232,7 +234,7 @@ class PerceptionNode:
                 cls = result.boxes.cls[i]                       # 0 is pepper, 1 is peduncle
 
                 xywh = result.boxes.xywh[i].cpu().numpy()
-                xywh[0], xywh[1] = xywh[1], xywh[0]             # Switch from YOLO axes to NumPy axes
+                xywh[0], xywh[1] = int(xywh[1]), int(xywh[0])   # Switch from YOLO axes to NumPy axes
                 
                 if cls == 1:                                    # it is a pepper
                     pepper_detection = PepperFruit(self.fruit_count, xywh=xywh, mask=np.array(mask.cpu()), segment=segment)
@@ -246,6 +248,13 @@ class PerceptionNode:
                                         
             self.image_count+=1
 
+
+    def empty_visualization_markers(self):
+        self.fruit_marker_rs.points = []
+        self.fruit_marker_base.points = []
+        self.peduncle_marker_rs.points = []
+        self.peduncle_marker_base.points = []
+        
     
     def calculate_pepper_poses(self):
         for i, pepper in self.pepper_detections.items():
@@ -257,11 +266,27 @@ class PerceptionNode:
 
             if peduncle.xyz_rs is None or peduncle.xyz_base is None:
                 del self.pepper_detections[i]
+                continue
+            
+            self.fruit_marker_rs.points.append(Point(fruit.xyz_rs[0], fruit.xyz_rs[1], fruit.xyz_rs[2]))
+            self.fruit_marker_base.points.append(Point(fruit.xyz_base[0], fruit.xyz_base[1], fruit.xyz_base[2]))
+            self.peduncle_marker_rs.points.append(Point(peduncle.xyz_rs[0], peduncle.xyz_rs[1], peduncle.xyz_rs[2]))
+            self.peduncle_marker_base.points.append(Point(peduncle.xyz_base[0], peduncle.xyz_base[1], peduncle.xyz_base[2]))
 
+
+    def publish_visualization_markers(self):
+        if self.fruit_marker_rs.points == []:
+            self.fruit_marker_rs.points.append(Point(0, 0, 0))
+            self.fruit_marker_base.points.append(Point(0, 0, 0))
+            
         self.fruit_marker_rs.header.stamp = rospy.Time.now()
         self.fruit_marker_rs_pub.publish(self.fruit_marker_rs)
         self.fruit_marker_base.header.stamp = rospy.Time.now()
         self.fruit_marker_base_pub.publish(self.fruit_marker_base)
+
+        if self.peduncle_marker_rs.points == []:
+            self.peduncle_marker_rs.points.append(Point(0, 0, 0))
+            self.peduncle_marker_base.points.append(Point(0, 0, 0))
 
         self.peduncle_marker_rs.header.stamp = rospy.Time.now()
         self.peduncle_marker_rs_pub.publish(self.peduncle_marker_rs)
@@ -275,11 +300,9 @@ class PerceptionNode:
 
         # X, Y, Z in RS frame
         X_rs, Y_rs, Z_rs = self.get_3D_coords(x, y, z)
-        self.fruit_marker_rs.points.append(Point(X_rs, Y_rs, Z_rs))
         
         # X, Y, Z in base frame
         X_b, Y_b, Z_b = self.transform_to_base_frame(X_rs, Y_rs, Z_rs)
-        self.fruit_marker_base.points.append(Point(X_b, Y_b, Z_b))
         
         return (X_rs, Y_rs, Z_rs), (X_b, Y_b, Z_b)
     
@@ -290,15 +313,13 @@ class PerceptionNode:
         if x == -1 and y == -1:
             return None, None
         
-        z = min(self.get_depth(x, y), pepper_depth + 0.02)      # TODO tune this
-                
+        z = max(min(self.get_depth(x, y), pepper_depth + 0.02), pepper_depth + 0.02)      # TODO tune this
+
         # X, Y, Z in RS axes
         X_rs, Y_rs, Z_rs = self.get_3D_coords(x, y, z)
-        self.peduncle_marker_rs.points.append(Point(X_rs, Y_rs, Z_rs))
         
         # Base frame
         X_b, Y_b, Z_b = self.transform_to_base_frame(X_rs, Y_rs, Z_rs)
-        self.peduncle_marker_base.points.append(Point(X_b, Y_b, Z_b))
         
         return (X_rs, Y_rs, Z_rs), (X_b, Y_b, Z_b)
     
@@ -363,6 +384,9 @@ class PerceptionNode:
             rospy.logerr("Error converting from depth image message: {}".format(e))
             
     def get_depth(self, x, y):
+        x = int(x)
+        y = int(y)
+        
         top_x = max(0, x - self.depth_window)
         bottom_x = min(self.img_height, x + self.depth_window)
     

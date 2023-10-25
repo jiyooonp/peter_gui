@@ -167,10 +167,10 @@ class PerceptionNode:
         try:
 
             # Convert ROS Image message to OpenCV image
-            cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='passthrough')
+            self.image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='passthrough')
 
-            if cv_image is not None:
-                self.run_yolo(cv_image)
+            if self.image is not None:
+                self.run_yolo(self.image)
                 
                 pepper_fruit_peduncle_match = match_pepper_fruit_peduncle(self.fruit_detections, self.peduncle_detections, self.image_count, self.image)
 
@@ -189,12 +189,10 @@ class PerceptionNode:
                 self.fruit_detections = dict()
                 self.peduncle_detections = dict()
 
-                self.image = cv_image
-
                 if self.pepper_detections != dict():
                     for i, pepper in self.pepper_detections.items():
                         rand_color = self.random_color()
-                        self.image = self.visualize_result(self.image, pepper.pepper_fruit.segment, poi=None, color=rand_color)
+                        self.image = self.visualize_result(self.image, pepper.pepper_fruit.segment, poi=None, color=rand_color, lighter = True)
                         self.image = self.visualize_result(self.image, pepper.pepper_peduncle.segment, poi=pepper.pepper_peduncle.poi_px, color=rand_color)
 
                 try:
@@ -245,14 +243,12 @@ class PerceptionNode:
                 box = result.boxes.xyxy[i]   
                 cls = result.boxes.cls[i] # 0 is pepper, 1 is peduncle
 
+                xywh = result.boxes.xywh[i].cpu().numpy() 
+                # Switch from YOLO axes to NumPy axes
+                xywh[0], xywh[1] = xywh[1], xywh[0]
+
                 if cls == 1: # it is a pepper
                     pepper_detection = PepperFruit(self.fruit_count, segment=segment)
-
-                    # TODO change (this is just a placeholder)
-                    xywh = result.boxes.xywh 
-                    xywh = xywh[0].cpu().numpy()
-                    # Switch from YOLO axes to NumPy axes
-                    xywh[0], xywh[1] = xywh[1], xywh[0]
 
                     pepper_detection.xywh = xywh
                     self.fruit_detections[self.fruit_count] = pepper_detection
@@ -261,9 +257,6 @@ class PerceptionNode:
                     # These are in RealSense coordinate system
                     self.pepper_center.x = int((box[1] + box[3]) / 2)
                     self.pepper_center.y = int((box[0] + box[2]) / 2)
-
-                    # self.peduncle_offset = int((box[3] - box[1]) / 3)
-                    # self.pepper_center.x -= self.peduncle_offset
 
                     self.pepper_center.z = self.get_depth(int(self.pepper_center.x), int(self.pepper_center.y))
 
@@ -305,15 +298,12 @@ class PerceptionNode:
                     
                     # TODO add pepper xywh
                     peduncle_detection = PepperPeduncle(self.peduncle_count, np.array(mask.cpu()), segment=segment)
-                    xywh = result.boxes.xywh[i].cpu().numpy()
-                    # Switch from YOLO axes to NumPy axes
-                    xywh[0], xywh[1] = xywh[1], xywh[0]
-
+                    self.peduncle_count += 1
+                    
                     # visualize the peduncle mask in rviz 
                     self.peduncle_mask_points = []
 
                     x, y = np.where(np.array(mask.cpu()) == 1)
-                    # print("there are {} points in the mask".format(len(x)))
                     xys = list(zip(x, y))
                     for x, y in xys:
                         z = self.depth_image[x, y] * 0.001
@@ -457,7 +447,12 @@ class PerceptionNode:
     def state_callback(self, msg):
         self.state = msg.data
 
-    def visualize_result(self, image, segment, poi=None, color=(100, 0, 125, 0.1)):
+    def visualize_result(self, image, segment, poi=None, color=(100, 0, 125, 0.1), lighter = False):
+        if lighter:
+            # print("changed color : ", color, end=" -> ")
+            color[0] = (color[0] + 200) % 255
+            # print(color)
+            
         mask_coords = (segment @ np.array([[self.img_width, 0], [0, self.img_height]])).astype(int)
         image = cv2.fillPoly(image, pts=[mask_coords], color=color)
         if poi is not None:
@@ -482,7 +477,7 @@ class PerceptionNode:
         g = random.randint(0, 255)
         b = random.randint(0, 255)
         a = random.random()  # returns a float between 0 and 1
-        return (r, g, b, a)
+        return [r, g, b, a]
 
 if __name__ == '__main__':
     try:

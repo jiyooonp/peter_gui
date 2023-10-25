@@ -132,9 +132,7 @@ def match_pepper_fruit_peduncle(pepper_fruit_detections: Dict[int, PepperFruit],
         min_dist = math.inf
         peduncle_match = None
         peduncle_number = 1
-        print("????")
         for pepper_peduncle in pepper_peduncle_detections.values():
-            print("pepper_peduncle.number:", pepper_peduncle.number)
 
             dist = distance_between_pepper_fruit_peduncle(pepper_fruit, pepper_peduncle, image_count*100 + pepper_number*10 + peduncle_number, image)
             x, y, w, h = pepper_fruit.xywh
@@ -155,16 +153,11 @@ def match_pepper_fruit_peduncle(pepper_fruit_detections: Dict[int, PepperFruit],
             peduncle_match = PepperPeduncle(-1)
 
         pepper_fruit_peduncle_distances.append(((pepper_fruit.number, peduncle_match.number), min_dist))
-        visualize_distance(pepper_fruit, peduncle_match, image_count*100 + pepper_number*10 + peduncle_number, image)
-        print(f"Pepper {pepper_fruit.number} and peduncle {peduncle_match.number}")
-        print("pepper xywh: ", pepper_fruit.xywh, " peduncle xywh: ", peduncle_match.xywh)
+        # visualize_distance(pepper_fruit, peduncle_match, image_count*100 + pepper_number*10 + peduncle_number, image)
 # 
     pepper_fruit_peduncle_match = pepper_fruit_peduncle_distances #remove_duplicate_peduncles(pepper_fruit_peduncle_distances)
-    print("================== ")
     for i, ((fruit, peduncle), _ )in enumerate(pepper_fruit_peduncle_distances):
         if peduncle == -1:
             continue
-        visualize_distance(pepper_fruit_detections[fruit], pepper_peduncle_detections[peduncle], image_count*10000+i, image)
-        print(f"Pepper {fruit} and peduncle {peduncle}")
-    print("================== END")
+        # visualize_distance(pepper_fruit_detections[fruit], pepper_peduncle_detections[peduncle], image_count*10000+i, image)
     return pepper_fruit_peduncle_match

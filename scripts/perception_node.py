@@ -298,6 +298,7 @@ class PerceptionNode:
                     
                     # TODO add pepper xywh
                     peduncle_detection = PepperPeduncle(self.peduncle_count, np.array(mask.cpu()), segment=segment)
+                    self.peduncle_detections[self.peduncle_count] = peduncle_detection
                     self.peduncle_count += 1
                     
                     # visualize the peduncle mask in rviz 
@@ -325,9 +326,6 @@ class PerceptionNode:
                     if poi_x == -1 and poi_y == -1:
                         continue
 
-                    self.peduncle_detections[peduncle_count] = peduncle_detection
-                    peduncle_count += 1
-                                        
                     # These are in NumPy axes
                     self.peduncle_center.x = poi_x
                     self.peduncle_center.y = poi_y
@@ -447,12 +445,13 @@ class PerceptionNode:
     def state_callback(self, msg):
         self.state = msg.data
 
-    def visualize_result(self, image, segment, poi=None, color=(100, 0, 125, 0.1), lighter = False):
+    def visualize_result(self, image, segment, poi=None, color=[100, 0, 125, 0.1], lighter = False):
+        color = list(color)
         if lighter:
             # print("changed color : ", color, end=" -> ")
-            color[0] = (color[0] + 200) % 255
-            # print(color)
-            
+            color[0] = min(color[0] + 20, 255)
+            color[1] = min(color[1] + 20, 255)
+            color[2] = min(color[2] + 20, 255)
         mask_coords = (segment @ np.array([[self.img_width, 0], [0, self.img_height]])).astype(int)
         image = cv2.fillPoly(image, pts=[mask_coords], color=color)
         if poi is not None:

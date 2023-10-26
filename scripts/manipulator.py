@@ -16,13 +16,16 @@ class Manipulator:
     def __init__(self):
         # initialize values
         self.ip = rospy.get_param('xarm_robot_ip')
-        # self.ip = '192.168.1.214'
+        # self.ip = '192.168.1.196'
         self.pregrasp_offset = 0.15
         # self.init_pose = rospy.get_param('/init_pose')
         # self.basket_pose = rospy.get_param('/basket_pose')
         # todo: put these in launch file
         # self.init_pose = [200, 0, 500, 87.280666, -44.962863, 84.593953]# ip: 14
-        self.init_pose = [156, 0.0, 475, -90, 45, -90] # ip:13, upside-down
+        # self.init_pose = [156, 0.0, 475, -90, 45, -90] # ip:13, upside-down
+        self.init_pose = [-36.721664, -142.990952, 532.491821, 77.109176, -36.535571, 17.176301]
+ #testing 10/26
+        
         # self.basket_pose = [201.56279, -168.17691, 513.328613, 85.901671, -44.935476, 45.608758] # ip: 14
         self.basket_pose = [201.56279, -168.17691, 513.328613, -90, 45, -90]# ip: 13
 
@@ -64,9 +67,8 @@ class Manipulator:
 
 
     def test(self):
-        print("TESTING")
-        self.moveToInit()
-        self.moveToBasket(0.15)
+        print(self.arm.get_position()[1])
+
         return
     
     def disconnect(self):

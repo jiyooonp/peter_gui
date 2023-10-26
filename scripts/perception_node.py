@@ -93,8 +93,8 @@ class PerceptionNode:
         # Make marker for visualization
         self.peduncle_marker_rs =  self.make_marker(frame_id="camera_color_optical_frame")
         self.peduncle_marker_base =  self.make_marker(marker_type=8, frame_id='link_base', r= 1, g=0, b=1, a=1, x=0.02, y=0.01)
-        self.pepper_marker_rs =  self.make_marker(marker_type=8, frame_id='camera_color_optical_frame', r= 1, g=0, b=0, a=1, x=0.05, y=0.05)
-        self.pepper_marker_base =  self.make_marker(marker_type=8, frame_id='link_base', r= 0, g=1, b=0, a=1, x=0.06, y=0.06)
+        self.fruit_marker_rs =  self.make_marker(marker_type=8, frame_id='camera_color_optical_frame', r= 1, g=0, b=0, a=1, x=0.05, y=0.05)
+        self.fruit_marker_base =  self.make_marker(marker_type=8, frame_id='link_base', r= 0, g=1, b=0, a=1, x=0.06, y=0.06)
 
         self.peduncle_mask_rs = self.make_marker(marker_type=8, frame_id='camera_color_optical_frame', r= 1, g=0, b=0, a=1, x=0.02, y=0.02)
 
@@ -105,8 +105,8 @@ class PerceptionNode:
         self.peduncle_marker_rs_pub = rospy.Publisher("/visualization_peduncle_marker_rs", Marker, queue_size=1)
         self.peduncle_marker_base_pub = rospy.Publisher("/visualization_peduncle_marker_base", Marker, queue_size=1)
 
-        self.pepper_marker_rs_pub = rospy.Publisher("/visualization_pepper_marker_rs", Marker, queue_size=1)
-        self.pepper_marker_base_pub = rospy.Publisher("/visualization_pepper_marker_base", Marker, queue_size=1)
+        self.fruit_marker_rs_pub = rospy.Publisher("/visualization_pepper_marker_rs", Marker, queue_size=1)
+        self.fruit_marker_base_pub = rospy.Publisher("/visualization_pepper_marker_base", Marker, queue_size=1)
 
         self.peduncle_mask_pub = rospy.Publisher("/visualization_peduncle_mask", Marker, queue_size=1)
 
@@ -140,15 +140,15 @@ class PerceptionNode:
         
         self.detection_void_count = 0
         self.last_peduncle_center = Point()
-        self.last_pepper_center = Point()
+        self.last_fruit_center = Point()
 
         # store the results of YOLO
         self.fruit_count = 0
         self.peduncle_count = 0
         self.pepper_count = 0
+        self.fruit_detections = dict()
         self.peduncle_detections = dict()
         self.pepper_detections = dict()
-        self.fruit_detections = dict()
 
 
         # visualization
@@ -172,7 +172,7 @@ class PerceptionNode:
 
             if self.image is not None:
                 self.run_yolo(self.image)
-                
+
                 pepper_fruit_peduncle_match = match_pepper_fruit_peduncle(self.fruit_detections, self.peduncle_detections, self.image_count, self.image)
 
                 for (pfn, ppn), _ in pepper_fruit_peduncle_match:
@@ -187,13 +187,21 @@ class PerceptionNode:
                         self.pepper_detections[self.pepper_count] = pepper
                         self.pepper_count += 1
 
+                self.empty_visualization_markers()
+                self.calculate_pepper_poses()
+                self.publish_visualization_markers()
+                self.choose_pepper()
+                # self.plot_masks()
+
+                self.fruit_count = 0
+                self.peduncle_count = 0
                 self.fruit_detections = dict()
                 self.peduncle_detections = dict()
 
                 if self.pepper_detections != dict():
                     for i, pepper in self.pepper_detections.items():
                         rand_color = self.random_color()
-                        self.image = self.visualize_result(self.image, pepper.pepper_fruit.segment, poi=None, color=rand_color, lighter = True)
+                        self.image = self.visualize_result(self.image, pepper.pepper_fruit.segment, poi=None, color=rand_color)
                         self.image = self.visualize_result(self.image, pepper.pepper_peduncle.segment, poi=pepper.pepper_peduncle.poi_px, color=rand_color)
 
                 try:
@@ -204,54 +212,31 @@ class PerceptionNode:
                     rospy.logerr(
                         "Error converting back to image message: {}".format(e))
                     
+                self.pepper_count = 0
                 self.pepper_detections = dict()
     
         except cv_bridge.CvBridgeError as e:
             rospy.logerr("Error converting from image message: {}".format(e))
             return
-        
-
+            
+ 
     def run_yolo(self, image):
 
         results_both = self.yolo(image, verbose=False)
+        result = results_both[0]                                # only take the first image because there is only one image
 
-        self.peduncle_dict = dict()
-        peduncle_count = 0
+        if len(result.boxes) != 0:                              # if there is a detection
 
-        self.pepper_center = Point() # TODO can we just do Point(x=-1, y=-1, z=0)?
-        self.pepper_center.x = -1 # Assume there are no detections initially
-        self.pepper_center.y = -1
-        self.pepper_center.z = 0
+            for i in range(len(result.masks)):                  # for each mask
+                segment = result.masks.xyn[i]                   # only boundary of mask
+                mask = result.masks.data[i]                     # mask with 1s and 0s
+                cls = result.boxes.cls[i]                       # 0 is pepper, 1 is peduncle
 
-        self.peduncle_center = Point() # TODO can we just do Point(x=-1, y=-1, z=0)?
-        self.peduncle_center.x = -1 # self.img_width/2
-        self.peduncle_center.y = -1 # self.img_height/2
-        self.peduncle_center.z = 0
-
-        self.pepper_marker_rs.points = []
-        self.pepper_marker_base.points = []
-        self.peduncle_marker_rs.points = []
-        self.peduncle_marker_base.points = []
-        self.peduncle_mask_rs.points = []
-        result = results_both[0] # only take the first image because there is only one image
-        # import ipdb;
-        # ipdb.set_trace()
-        if len(result.boxes) != 0: # if there is a detection
-
-            for i in range(len(result.masks)): # for each mask
-                segment = result.masks.xyn[i] # only boundary of mask
-                mask = result.masks.data[i]       # mask with 1s and 0s
-                box = result.boxes.xyxy[i]   
-                cls = result.boxes.cls[i] # 0 is pepper, 1 is peduncle
-
-                xywh = result.boxes.xywh[i].cpu().numpy() 
-                # Switch from YOLO axes to NumPy axes
-                xywh[0], xywh[1] = xywh[1], xywh[0]
-
-                if cls == 1: # it is a pepper
-                    pepper_detection = PepperFruit(self.fruit_count, segment=segment)
-
-                    pepper_detection.xywh = xywh
+                xywh = result.boxes.xywh[i].cpu().numpy()
+                xywh[0], xywh[1] = int(xywh[1]), int(xywh[0])   # Switch from YOLO axes to NumPy axes
+                
+                if cls == 1:                                    # it is a pepper
+                    pepper_detection = PepperFruit(self.fruit_count, xywh=xywh, mask=np.array(mask.cpu()), segment=segment)
                     self.fruit_detections[self.fruit_count] = pepper_detection
                     self.fruit_count+= 1
 
@@ -385,77 +370,22 @@ class PerceptionNode:
             # visualize the peduncle mask in rviz 
             x, y = np.where(peduncle.mask == 1)
 
-                    x, y = np.where(np.array(mask.cpu()) == 1)
-                    xys = list(zip(x, y))
-                    for x, y in xys:
-                        z = self.depth_image[x, y] * 0.001
-                        if z == 0:
-                            continue
-                        X, Y, Z = self.get_3D_coords(
-                            x, y, z)
-                        point = Point(X, Y, Z)
-                        self.peduncle_mask_points.append(point)
-                        self.vis_peduncle_list.append((X, Y, Z))
-                    for point in self.peduncle_mask_points:
-                        self.peduncle_mask_rs.points.append(point)
-                    self.peduncle_mask_pub.publish(self.peduncle_mask_rs)
-                    self.peduncle_mask_rs.points = []
+            # print("there are {} points in the mask".format(len(x)))
+            xys = list(zip(x, y))
+            for x, y in xys:
+                z = self.depth_image[x, y] * 0.001
+                if z == 0:
+                    continue
+                X, Y, Z = self.get_3D_coords(x, y, z)
+                # self.peduncle_mask_rs.points.append(Point(X, Y, Z))
+                self.vis_peduncle_list.append((X, Y, Z))
+            
+            # self.peduncle_mask_pub.publish(self.peduncle_mask_rs)     # TODO remove if not used
+            # self.peduncle_mask_rs.points = []
 
-                    peduncle_detection.xywh = xywh
-                    poi_x, poi_y = peduncle_detection.set_point_of_interaction()
-
-                    if poi_x == -1 and poi_y == -1:
-                        continue
-
-                    # These are in NumPy axes
-                    self.peduncle_center.x = poi_x
-                    self.peduncle_center.y = poi_y
-
-                    self.peduncle_center.z = self.get_depth(int(self.peduncle_center.x), int(self.peduncle_center.y))
-                    if self.peduncle_center.z < 0.2:
-                        continue
-                    
-                    # X, Y, Z in RS axes
-                    X, Y, Z = self.get_3D_coords(
-                        self.peduncle_center.x, self.peduncle_center.y, self.peduncle_center.z)
-
-                    self.peduncle_marker_rs.points.append(Point(X, Y, Z))
-                    self.peduncle_marker_rs.header.stamp = rospy.Time.now()
-                    self.peduncle_marker_rs_pub.publish(self.peduncle_marker_rs)
-
-                    # Base frame
-                    X_b, Y_b, Z_b = 0, 0, 0 #self.transform_to_base_frame(X, Y, Z)
-
-                    self.peduncle_marker_base.points.append(Point(X_b, Y_b, Z_b))
-                    self.peduncle_marker_base.header.stamp = rospy.Time.now()
-                    self.peduncle_marker_base_pub.publish(self.peduncle_marker_base)
-                    
-                    if self.state != 5:
-                        self.poi.x = X_b
-                        self.poi.y = Y_b
-                        self.poi.z = Z_b
-
-                    self.box_size = (box[2] - box[0]) * (box[3] - box[1])
-
-                    self.last_peduncle_center = self.peduncle_center
-
-            # plot_3d_points(self.vis_pepper_list, self.vis_peduncle_list, self.image, "/root/catkin_ws/both"+str(self.image_count)+".png")
-            self.vis_peduncle_list = []
-            self.vis_pepper_list = []
-
-            self.image_count+=1
-        else: 
-            # TODO probably don't need this anymore 
-            self.detection_void_count += 1
-            if self.detection_void_count > 100:
-                self.peduncle_center.y = self.last_peduncle_center.y
-                self.peduncle_center.x = 240
-                self.pepper_center.y = self.last_pepper_center.y
-                self.pepper_center.x = 240
-                self.detection_void_count = 0
-        self.poi_pub.publish(self.poi)
-        self.pepper_center_pub.publish(self.pepper_center)
-        self.peduncle_center_pub.publish(self.peduncle_center)
+        plot_3d_points(self.vis_pepper_list, self.vis_peduncle_list, self.image, "/root/catkin_ws/both"+str(self.image_count)+".png")
+        self.vis_peduncle_list = []
+        self.vis_pepper_list = []
 
 
     def depth_callback(self, msg):
@@ -467,6 +397,11 @@ class PerceptionNode:
             rospy.logerr("Error converting from depth image message: {}".format(e))
             
     def get_depth(self, x, y):
+        x = int(x)
+        y = int(y)
+        
+        print(f"depth image: {type(self.depth_image)}")
+        
         top_x = max(0, x - self.depth_window)
         bottom_x = min(self.img_height, x + self.depth_window)
     
@@ -526,13 +461,7 @@ class PerceptionNode:
     def state_callback(self, msg):
         self.state = msg.data
 
-    def visualize_result(self, image, segment, poi=None, color=[100, 0, 125, 0.1], lighter = False):
-        color = list(color)
-        if lighter:
-            # print("changed color : ", color, end=" -> ")
-            color[0] = min(color[0] + 20, 255)
-            color[1] = min(color[1] + 20, 255)
-            color[2] = min(color[2] + 20, 255)
+    def visualize_result(self, image, segment, poi=None, color=(100, 0, 125, 0.1)):
         mask_coords = (segment @ np.array([[self.img_width, 0], [0, self.img_height]])).astype(int)
         image = cv2.fillPoly(image, pts=[mask_coords], color=color)
         if poi is not None:
@@ -557,7 +486,7 @@ class PerceptionNode:
         g = random.randint(0, 255)
         b = random.randint(0, 255)
         a = random.random()  # returns a float between 0 and 1
-        return [r, g, b, a]
+        return (r, g, b, a)
 
 if __name__ == '__main__':
     try:

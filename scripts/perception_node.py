@@ -9,6 +9,8 @@ from std_msgs.msg import String, Int16, Bool
 from geometry_msgs.msg import Point, Pose
 from visualization_msgs.msg import Marker
 
+import message_filters
+
 import cv2
 import torch
 import matplotlib.patches as patches
@@ -119,8 +121,11 @@ class PerceptionNode:
 
         # Subscribers
         self.camera_info_sub = rospy.Subscriber("/camera/color/camera_info", CameraInfo, self.camera_info_callback)
-        self.depth_sub = rospy.Subscriber('/camera/aligned_depth_to_color/image_raw', Image, self.depth_callback, queue_size=1)
-        self.image_sub = rospy.Subscriber('/camera/color/image_raw', Image, self.image_callback, queue_size=1)
+        self.depth_sub = message_filters.Subscriber('/camera/aligned_depth_to_color/image_raw', Image)
+        self.image_sub = message_filters.Subscriber('/camera/color/image_raw', Image)
+        
+        ts = message_filters.TimeSynchronizer([self.image_sub, self.depth_sub], queue_size=1)
+        ts.registerCallback(self.img_depth_callback)
 
         self.state_sub = rospy.Subscriber('/state', Int16, self.state_callback, queue_size=1)
 
@@ -134,14 +139,10 @@ class PerceptionNode:
 
         self.pepper_center = None
         self.peduncle_center = None
-        self.depth_image = None
+        # self.depth_image = None
 
         self.peduncle_offset = 0.0       
         
-        self.detection_void_count = 0
-        self.last_peduncle_center = Point()
-        self.last_fruit_center = Point()
-
         # store the results of YOLO
         self.fruit_count = 0
         self.peduncle_count = 0
@@ -153,27 +154,38 @@ class PerceptionNode:
 
         # visualization
         self.image_count = 0
-        self.image = np.zeros((480, 640, 3), dtype=np.uint8)
+        # self.image = np.zeros((480, 640, 3), dtype=np.uint8)
         self.vis_pepper_list = []
         self.vis_peduncle_list = []
 
         self.xarm_moving = False
-    
-    def xarm_moving_callback(self, msg):
-        self.xarm_moving = msg.data
-        print(self.xarm_moving)
+        
+        
+    def img_depth_callback(self, img, depth_img):
+        
+        assert img.header.stamp == depth_img.header.stamp
+        
+        synced_time = img.header.stamp
+        try:
+            transformation = self.tfBuffer.lookup_transform("link_base", "camera_color_optical_frame", synced_time, rospy.Duration(0.1))
+            self.detect_peppers(img, depth_img, transformation)
+        except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
+            print("Error getting the transform")
+        
+        
 
-    def image_callback(self, msg):
+    def detect_peppers(self, img, depth, transformation):
 
         try:
 
             # Convert ROS Image message to OpenCV image
-            self.image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='passthrough')
+            image = self.bridge.imgmsg_to_cv2(img, desired_encoding='passthrough')
+            depth_img = self.bridge.imgmsg_to_cv2(depth, desired_encoding='passthrough')
 
-            if self.image is not None:
-                self.run_yolo(self.image)
+            if image is not None:
+                self.run_yolo(image)
 
-                pepper_fruit_peduncle_match = match_pepper_fruit_peduncle(self.fruit_detections, self.peduncle_detections, self.image_count, self.image)
+                pepper_fruit_peduncle_match = match_pepper_fruit_peduncle(self.fruit_detections, self.peduncle_detections, self.image_count, image)
 
                 for (pfn, ppn), _ in pepper_fruit_peduncle_match:
                     if ppn == -1:
@@ -188,10 +200,10 @@ class PerceptionNode:
                         self.pepper_count += 1
 
                 self.empty_visualization_markers()
-                self.calculate_pepper_poses()
+                self.calculate_pepper_poses(depth_img, transformation)
                 self.publish_visualization_markers()
                 self.choose_pepper()
-                # self.plot_masks()
+                # self.plot_masks(depth_img)
 
                 self.fruit_count = 0
                 self.peduncle_count = 0
@@ -201,11 +213,11 @@ class PerceptionNode:
                 if self.pepper_detections != dict():
                     for i, pepper in self.pepper_detections.items():
                         rand_color = self.random_color()
-                        self.image = self.visualize_result(self.image, pepper.pepper_fruit.segment, poi=None, color=rand_color)
-                        self.image = self.visualize_result(self.image, pepper.pepper_peduncle.segment, poi=pepper.pepper_peduncle.poi_px, color=rand_color)
+                        image = self.visualize_result(image, pepper.pepper_fruit.segment, poi=None, color=rand_color)
+                        image = self.visualize_result(image, pepper.pepper_peduncle.segment, poi=pepper.pepper_peduncle.poi_px, color=rand_color)
 
                 try:
-                    image_msg_bb = self.bridge.cv2_to_imgmsg(self.image, "rgb8")
+                    image_msg_bb = self.bridge.cv2_to_imgmsg(image, "rgb8")
                     self.image_pub.publish(image_msg_bb)
 
                 except cv_bridge.CvBridgeError as e:
@@ -218,7 +230,10 @@ class PerceptionNode:
         except cv_bridge.CvBridgeError as e:
             rospy.logerr("Error converting from image message: {}".format(e))
             return
-            
+    
+    def xarm_moving_callback(self, msg):
+        self.xarm_moving = msg.data
+        print(self.xarm_moving) 
  
     def run_yolo(self, image):
 
@@ -255,20 +270,20 @@ class PerceptionNode:
         self.peduncle_marker_base.points = []
         
     
-    def calculate_pepper_poses(self):
+    def calculate_pepper_poses(self, depth_img, transformation):
         delete_keys = []
 
         for i, pepper in self.pepper_detections.items():
             fruit = pepper.pepper_fruit
             peduncle = pepper.pepper_peduncle
 
-            fruit.xyz_rs, fruit.xyz_base = self.fruit_pose(fruit)
+            fruit.xyz_rs, fruit.xyz_base = self.fruit_pose(fruit, depth_img, transformation)
 
             if fruit.xyz_rs is None or fruit.xyz_base is None:
                 delete_keys.append(i)
                 continue
 
-            peduncle.xyz_rs, peduncle.xyz_base = self.peduncle_pose(peduncle, fruit.xyz_rs[2])
+            peduncle.xyz_rs, peduncle.xyz_base = self.peduncle_pose(peduncle, fruit.xyz_rs[2], depth_img, transformation)
 
             if peduncle.xyz_rs is None or peduncle.xyz_base is None:
                 delete_keys.append(i)
@@ -303,9 +318,9 @@ class PerceptionNode:
         self.peduncle_marker_base_pub.publish(self.peduncle_marker_base)
 
     
-    def fruit_pose(self, fruit):
+    def fruit_pose(self, fruit, depth_img, transformation):
         x, y, w, h = fruit.xywh
-        z = self.get_depth(x, y)
+        z = self.get_depth(depth_img, x, y)
 
         if z == 0 or z > 3:                                                                 # TODO must test
             return None, None
@@ -314,24 +329,24 @@ class PerceptionNode:
         X_rs, Y_rs, Z_rs = self.get_3D_coords(x, y, z)
         
         # X, Y, Z in base frame
-        X_b, Y_b, Z_b = self.transform_to_base_frame(X_rs, Y_rs, Z_rs)
+        X_b, Y_b, Z_b = self.transform_to_base_frame(transformation, X_rs, Y_rs, Z_rs)
         
         return (X_rs, Y_rs, Z_rs), (X_b, Y_b, Z_b)
     
 
-    def peduncle_pose(self, peduncle, pepper_depth):
+    def peduncle_pose(self, peduncle, pepper_depth, depth_img, transformation):
         x, y = peduncle.set_point_of_interaction()
 
         if x == -1 and y == -1:
             return None, None
         
-        z = max(min(self.get_depth(x, y), pepper_depth + 0.02), pepper_depth + 0.02)        # TODO tune this
+        z = max(min(self.get_depth(depth_img, x, y), pepper_depth + 0.02), pepper_depth + 0.02)        # TODO tune this
 
         # X, Y, Z in RS axes
         X_rs, Y_rs, Z_rs = self.get_3D_coords(x, y, z)
         
         # Base frame
-        X_b, Y_b, Z_b = self.transform_to_base_frame(X_rs, Y_rs, Z_rs)
+        X_b, Y_b, Z_b = self.transform_to_base_frame(transformation, X_rs, Y_rs, Z_rs)
         
         return (X_rs, Y_rs, Z_rs), (X_b, Y_b, Z_b)
     
@@ -351,7 +366,7 @@ class PerceptionNode:
         self.poi_pub.publish(self.poi)
     
 
-    def plot_masks(self):
+    def plot_masks(self, depth_img):
         for _, pepper in self.pepper_detections.items():
             fruit = pepper.pepper_fruit
             peduncle = pepper.pepper_peduncle
@@ -361,7 +376,7 @@ class PerceptionNode:
             # print("there are {} points in the mask".format(len(x)))
             xys = list(zip(x, y))
             for x, y in xys:
-                z = self.depth_image[x, y] * 0.001
+                z = depth_img[x, y] * 0.001
                 if z == 0:
                     continue
                 X, Y, Z = self.get_3D_coords(x, y, z)
@@ -373,7 +388,7 @@ class PerceptionNode:
             # print("there are {} points in the mask".format(len(x)))
             xys = list(zip(x, y))
             for x, y in xys:
-                z = self.depth_image[x, y] * 0.001
+                z = depth_img[x, y] * 0.001
                 if z == 0:
                     continue
                 X, Y, Z = self.get_3D_coords(x, y, z)
@@ -383,24 +398,16 @@ class PerceptionNode:
             # self.peduncle_mask_pub.publish(self.peduncle_mask_rs)     # TODO remove if not used
             # self.peduncle_mask_rs.points = []
 
-        plot_3d_points(self.vis_pepper_list, self.vis_peduncle_list, self.image, "/root/catkin_ws/both"+str(self.image_count)+".png")
+        plot_3d_points(self.vis_pepper_list, self.vis_peduncle_list, image, "/root/catkin_ws/both"+str(self.image_count)+".png")
         self.vis_peduncle_list = []
         self.vis_pepper_list = []
 
-
-    def depth_callback(self, msg):
-        try:
-            # Convert ROS image message to OpenCV image
-            self.depth_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='passthrough')
-
-        except cv_bridge.CvBridgeError as e:
-            rospy.logerr("Error converting from depth image message: {}".format(e))
             
-    def get_depth(self, x, y):
+    def get_depth(self, depth_img, x, y):
         x = int(x)
         y = int(y)
         
-        print(f"depth image: {type(self.depth_image)}")
+        # print(f"depth image: {type(depth)}")
         
         top_x = max(0, x - self.depth_window)
         bottom_x = min(self.img_height, x + self.depth_window)
@@ -408,7 +415,7 @@ class PerceptionNode:
         left_y = max(0, y - self.depth_window)
         right_y = min(self.img_width, y + self.depth_window)
 
-        depth_values = self.depth_image[top_x:bottom_x, left_y:right_y]
+        depth_values = depth_img[top_x:bottom_x, left_y:right_y]
         depth_values = depth_values.flatten()
         depth = 0.001*np.median(depth_values)
 
@@ -437,26 +444,21 @@ class PerceptionNode:
         Y = (y - self.camera_matrix[1, 2]) * Z / self.camera_matrix[1, 1]
         return X, Y, Z
     
-    def transform_to_base_frame(self, X, Y, Z):
-        # Get transform
-        try:
-            transformation = self.tfBuffer.lookup_transform("link_base", "camera_color_optical_frame", rospy.Time(), rospy.Duration(0.1))
-            
-            # Get translation and rotation
-            trans, quat = transformation.transform.translation, transformation.transform.rotation
-
-            # Create homogeneous matrix
-            homo_matrix = np.asarray(quaternion_matrix([quat.x, quat.y, quat.z, quat.w]))
-            homo_matrix[:3, 3] = np.array([trans.x, trans.y, trans.z])
-
-            # Transform to base frame
-            point_camera_frame = np.array([X, Y, Z, 1])
-            point_base_frame = np.matmul(homo_matrix, point_camera_frame) 
-
-            return point_base_frame[0], point_base_frame[1], point_base_frame[2]
+    def transform_to_base_frame(self, transformation, X, Y, Z):
         
-        except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
-            print("Error getting the transform")
+        # Get translation and rotation
+        trans, quat = transformation.transform.translation, transformation.transform.rotation
+
+        # Create homogeneous matrix
+        homo_matrix = np.asarray(quaternion_matrix([quat.x, quat.y, quat.z, quat.w]))
+        homo_matrix[:3, 3] = np.array([trans.x, trans.y, trans.z])
+
+        # Transform to base frame
+        point_camera_frame = np.array([X, Y, Z, 1])
+        point_base_frame = np.matmul(homo_matrix, point_camera_frame) 
+
+        return point_base_frame[0], point_base_frame[1], point_base_frame[2]
+        
 
     def state_callback(self, msg):
         self.state = msg.data

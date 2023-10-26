@@ -15,14 +15,16 @@ class Manipulator:
 
     def __init__(self):
         # initialize values
-        self.ip = rospy.get_param('xarm_robot_ip')
+        # self.ip = rospy.get_param('xarm_robot_ip')
+        self.ip = "192.168.1.196"
         self.pregrasp_offset = 0.15
         self.ee_length_offset = 0.15
         # todo: put these in config file
         # self.init_pose = [200, 0, 500, 87.280666, -44.962863, 84.593953]# ip: 14
-        self.init_pose = [156, 0.0, 475, -90, 45, -90] # ip:13, upside-down
+        self.init_pose = [39.866951, -234.744492, 559.317017, 95.052323, -41.443011, 6.623965]
+        # self.init_pose = [156, 0.0, 475, -90, 45, -90] # ip:13, upside-down
         self.basket_pose = [201.56279, -168.17691, 513.328613, -90, 45, -90]# ip: 13
-        self.basket_pregrasp = []
+        self.basket_pregrasp = [-226.275833, 5.253029, 439.106873, 87.818043, -41.550498, -90.103916]
 
         # initialize xArm
         self.arm = XArmAPI(self.ip)
@@ -47,7 +49,7 @@ class Manipulator:
         dist = dist*1000  # convert m to mm
         x,y,z,roll,pitch,yaw = self.arm.get_position()[1]
         print("Executing cartesian move")
-        self.arm.set_position(x+dist, y, z, roll, pitch, yaw, wait=True) # todo: test out relative=True
+        self.arm.set_position(x+dist, y, z, roll, pitch, yaw, wait=True, speed=10) # todo: test out relative=True
 
     def moveToPregrasp(self,x,y,z):
         # convert to mm from m
@@ -61,9 +63,12 @@ class Manipulator:
 
     def basketTesting(self):
         # current_pos = self.arm.get_position()[1]
+        # print(current_pos)
         self.moveToInit() # move to init pose
-        self.arm.set_position() # move to basket pre-grasp
-        self.cartesianMove(-0.15) # move forward to basket
+        self.cartesianMove(-0.05)
+        print("moving to pregrasp")
+        self.arm.set_position(*self.basket_pregrasp, wait=True, speed=20) # move to basket pre-grasp
+        self.cartesianMove(-0.1) # move forward to basket
 
     def test(self):
         print("TESTING")

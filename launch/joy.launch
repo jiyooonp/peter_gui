@@ -7,6 +7,8 @@
 
   <!-- <param name="tf_yaml" type="string" value="~/Documents/iowa_ws/src/ISU_Demo_Perception/scripts/flat_mount_tf.yaml" /> -->
   <param name="tf_yaml" type="string" value="/config/flat_mount_tf.yaml" />
+  <param name="arm_yaml" type="string" value="/config/amiga_arm.yaml" />
+  <!-- <param name="arm_yaml" type="string" value="/config/benchtop_arm.yaml" /> -->
   <param name="xarm_robot_ip" type="string" value="$(arg robot_ip)"/>
 
   <!--joystick node-->

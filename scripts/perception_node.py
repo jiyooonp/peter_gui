@@ -126,6 +126,7 @@ class PerceptionNode:
 
         self.xarm_moving_sub = rospy.Subscriber('/xarm_moving', Bool, self.xarm_moving_callback, queue_size=1)
 
+        # TODO set to (0, 0, 0)
         self.poi = Point()
         self.state = None
         
@@ -257,21 +258,31 @@ class PerceptionNode:
         
     
     def calculate_pepper_poses(self):
+        delete_keys = []
+
         for i, pepper in self.pepper_detections.items():
             fruit = pepper.pepper_fruit
             peduncle = pepper.pepper_peduncle
 
             fruit.xyz_rs, fruit.xyz_base = self.fruit_pose(fruit)
+
+            if fruit.xyz_rs is None or fruit.xyz_base is None:
+                delete_keys.append(i)
+                continue
+
             peduncle.xyz_rs, peduncle.xyz_base = self.peduncle_pose(peduncle, fruit.xyz_rs[2])
 
             if peduncle.xyz_rs is None or peduncle.xyz_base is None:
-                del self.pepper_detections[i]
+                delete_keys.append(i)
                 continue
             
             self.fruit_marker_rs.points.append(Point(fruit.xyz_rs[0], fruit.xyz_rs[1], fruit.xyz_rs[2]))
             self.fruit_marker_base.points.append(Point(fruit.xyz_base[0], fruit.xyz_base[1], fruit.xyz_base[2]))
             self.peduncle_marker_rs.points.append(Point(peduncle.xyz_rs[0], peduncle.xyz_rs[1], peduncle.xyz_rs[2]))
             self.peduncle_marker_base.points.append(Point(peduncle.xyz_base[0], peduncle.xyz_base[1], peduncle.xyz_base[2]))
+
+        for key in delete_keys:
+            del self.pepper_detections[key]
 
 
     def publish_visualization_markers(self):
@@ -298,6 +309,9 @@ class PerceptionNode:
         x, y, w, h = fruit.xywh
         z = self.get_depth(x, y)
 
+        if z == 0 or z > 3:                                                                 # TODO must test
+            return None, None
+
         # X, Y, Z in RS frame
         X_rs, Y_rs, Z_rs = self.get_3D_coords(x, y, z)
         
@@ -313,7 +327,7 @@ class PerceptionNode:
         if x == -1 and y == -1:
             return None, None
         
-        z = max(min(self.get_depth(x, y), pepper_depth + 0.02), pepper_depth + 0.02)      # TODO tune this
+        z = max(min(self.get_depth(x, y), pepper_depth + 0.02), pepper_depth + 0.02)        # TODO tune this
 
         # X, Y, Z in RS axes
         X_rs, Y_rs, Z_rs = self.get_3D_coords(x, y, z)
@@ -326,14 +340,15 @@ class PerceptionNode:
 
     def choose_pepper(self):
         # TODO improve with prioritization
-        if self.pepper_detections != dict():
-            pepper = self.pepper_detections[0]
+        for _, pepper in self.pepper_detections.items(): 
             peduncle = pepper.pepper_peduncle
 
             if self.state != 5:
                 self.poi.x = peduncle.xyz_base[0]
                 self.poi.y = peduncle.xyz_base[1]
                 self.poi.z = peduncle.xyz_base[2]
+
+            break
 
         self.poi_pub.publish(self.poi)
     

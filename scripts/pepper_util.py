@@ -98,7 +98,8 @@ class Curve:
             sorted_y = np.array([y for y, _ in sorted(zip(y, x))])
             
             self._curve_y = sorted_y
-            self._curve_x = self.parabola(sorted_y, self._params[0], self._params[1], self._params[2])
+            self._curve_x = sorted_x
+            # self._curve_x = self.parabola(sorted_y, self._params[0], self._params[1], self._params[2])
         else:
             self._parabola_direction = 'horizontal'
             self._params = params2
@@ -110,7 +111,8 @@ class Curve:
             sorted_y = np.array([y for _, y in sorted(zip(x, y))])
             
             self._curve_x = sorted_x
-            self._curve_y = self.parabola(sorted_x, self._params[0], self._params[1], self._params[2])
+            self._curve_y = sorted_y
+            # self._curve_y = self.parabola(sorted_x, self._params[0], self._params[1], self._params[2])
 
         return 1
 

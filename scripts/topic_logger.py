@@ -6,8 +6,8 @@ import rospy
 from sensor_msgs.msg import Joy
 from visualization_msgs.msg import Marker
 
-PEDUNCLE_FILE = "/peduncles_10242023.csv"
-PEPPER_FILE = "/peppers_10242023.csv"
+PEDUNCLE_FILE = "/peduncles_10262023_3.csv"
+PEPPER_FILE = "/peppers_10262023_3.csv"
 
 class Topic2CSV:
     

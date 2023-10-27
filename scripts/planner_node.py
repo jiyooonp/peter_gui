@@ -119,7 +119,7 @@ class PlannerNode:
                 rospy.sleep(.1)
                 self.send_to_ee("open")
                 rospy.loginfo("Plan Execution: Initalization Complete")
-                rospy.sleep(3) # fake wait for solomon's laptop
+                # rospy.sleep(3) # fake wait for solomon's laptop
                 self.planner_state_pub.publish(4)
             except:
                 rospy.loginfo("ERROR: UNABLE TO INITIALIZE AUTONOMOUS PROCEDURE")
@@ -150,7 +150,7 @@ class PlannerNode:
         elif self.state == 6:
             try:
                 xarm = Manipulator()
-                xarm.cartesianMove(0.15)
+                xarm.cartesianMoveX(0.15)
                 rospy.sleep(.1)
                 xarm.disconnect()
                 rospy.sleep(.1)

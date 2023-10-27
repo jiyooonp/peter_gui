@@ -25,7 +25,7 @@ class Manipulator:
         self.ip = rospy.get_param('/xarm_robot_ip')
         arm_yaml = rospy.get_param('/arm_yaml')
         rospack = rospkg.RosPack()
-        package_path = rospack.get_path("fvd_ws")
+        package_path = rospack.get_path("peter")
         self.parseYaml(arm_yaml, package_path)
 
         # initialize xArm
@@ -51,13 +51,21 @@ class Manipulator:
     def moveToInit(self):
         """move to initial position"""
         print("Moving to initial pose")
-        self.arm.set_position(*self.init_pose[0], wait=True, speed=25)
+        self.arm.set_position(*self.init_pose, wait=True, speed=20)
 
-    def cartesianMove(self,dist): # todo: test out set_servo_cartesian
+    def cartesianMoveX(self,dist): # todo: test out set_servo_cartesian
         """cartesian move along x"""
         dist = dist*1000  # convert m to mm
         current_pos = self.arm.get_position()[1]
         current_pos[0] += dist # add to x
+        print("Executing cartesian move")
+        self.arm.set_position(*current_pos, wait=True, speed=10)
+
+    def cartesianMoveY(self,dist): # todo: test out set_servo_cartesian
+        """cartesian move along y"""
+        dist = dist*1000  # convert m to mm
+        current_pos = self.arm.get_position()[1]
+        current_pos[1] += dist # add to y
         print("Executing cartesian move")
         self.arm.set_position(*current_pos, wait=True, speed=10)
 
@@ -66,19 +74,20 @@ class Manipulator:
         x -= self.pregrasp_offset
         x -= self.ee_length_offset
         # just using the orientation values from the init position
-        self.arm.set_position(x * 1000 ,y * 1000 ,z * 1000 ,*self.init_pose[3:], wait=True, speed=25)
+        self.arm.set_position(x * 1000 ,y * 1000 ,z * 1000 ,*self.init_pose[3:], wait=True, speed=20)
 
     def moveToBasket(self):
         """move to basket pose for pepper drop off"""
-        self.cartesianMove(-0.15) # todo: changed this value so need to verify
+        self.cartesianMoveX(-0.1) # move back 10 cm
         print("moving to basket pregrasp")
-        self.arm.set_position(*self.basket_pregrasp, wait=True, speed=25) # move to basket pre-grasp
-        self.cartesianMove(-0.1) # move forward to basket
+        self.arm.set_position(*self.basket_pregrasp, wait=True, speed=15) # move to basket pre-grasp
+        self.cartesianMoveY(-0.15) # move forward to basket
 
     def test(self):
         print("TESTING")
-        self.moveToInit()
-        self.basketTesting()
+        # print(self.arm.get_position()[1])
+        # self.moveToInit()
+        # self.moveToBasket()
         return
     
     def disconnect(self):
@@ -103,7 +112,7 @@ if __name__ == '__main__':
     try:
         xarm = Manipulator()
         while not rospy.is_shutdown():
-            # xarm.test()
+            xarm.test()
             rospy.sleep(0.1)
 
     except rospy.ROSInterruptException:

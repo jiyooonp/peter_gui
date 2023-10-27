@@ -150,7 +150,7 @@ class PlannerNode:
         elif self.state == 6:
             try:
                 xarm = Manipulator()
-                xarm.cartesianMove(0.15)
+                xarm.cartesianMoveX(0.15)
                 rospy.sleep(.1)
                 xarm.disconnect()
                 rospy.sleep(.1)

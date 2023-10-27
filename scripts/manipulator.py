@@ -22,6 +22,7 @@ class Manipulator:
         self.ee_length_offset = None
         self.init_pose = None
         self.basket_pregrasp = None
+        self.orientation = None
         self.ip = rospy.get_param('/xarm_robot_ip')
         arm_yaml = rospy.get_param('/arm_yaml')
         rospack = rospkg.RosPack()
@@ -47,6 +48,7 @@ class Manipulator:
         self.ee_length_offset = data["ee_offset"]
         self.init_pose = data["init_pose"]
         self.basket_pregrasp = data["basket_pregrasp"]
+        self.orientation = data["orientation"]
 
     def moveToInit(self):
         """move to initial position"""
@@ -74,7 +76,7 @@ class Manipulator:
         x -= self.pregrasp_offset
         x -= self.ee_length_offset
         # just using the orientation values from the init position
-        self.arm.set_position(x * 1000 ,y * 1000 ,z * 1000 ,*self.init_pose[3:], wait=True, speed=20)
+        self.arm.set_position(x * 1000 ,y * 1000 ,z * 1000 ,*self.orientation[3:], wait=True, speed=20)
 
     def moveToBasket(self):
         """move to basket pose for pepper drop off"""
@@ -85,7 +87,7 @@ class Manipulator:
 
     def test(self):
         print("TESTING")
-        # print(self.arm.get_position()[1])
+        print(self.arm.get_position()[1])
         # self.moveToInit()
         # self.moveToBasket()
         return
@@ -112,7 +114,7 @@ if __name__ == '__main__':
     try:
         xarm = Manipulator()
         while not rospy.is_shutdown():
-            xarm.test()
+            # xarm.test()
             rospy.sleep(0.1)
 
     except rospy.ROSInterruptException:

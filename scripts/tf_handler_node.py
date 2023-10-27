@@ -24,14 +24,14 @@ class TfBroadcaster:
         
         rospack = rospkg.RosPack()
         # get the file path for rospy_tutorials
-        package_path = rospack.get_path("fvd_ws")
+        package_path = rospack.get_path("peter")
         
         self.parseYaml(tf_yaml, package_path)
 
         
     def broadcast(self):
         rot = self.H[:3, :3]
-        # quaternion = tf_conversions.transformations.quaternion_from_matrix(self.H)
+        # quaternion1 = tf_conversions.transformations.quaternion_from_matrix(self.H)
         r = Rotation.from_matrix(rot) 
         quaternion = r.as_quat()
         trans = self.H[:, 3]

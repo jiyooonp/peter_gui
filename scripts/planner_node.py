@@ -173,7 +173,7 @@ class PlannerNode:
                 rospy.sleep(.1)
                 
                 xarm = Manipulator()
-                xarm.moveToBasket(0.15)
+                xarm.moveToBasket()
                 rospy.sleep(.1)
                 xarm.disconnect()
                 rospy.sleep(.1)

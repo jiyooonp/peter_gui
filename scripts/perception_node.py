@@ -203,7 +203,7 @@ class PerceptionNode:
                 self.calculate_pepper_poses(depth_img, transformation)
                 self.publish_visualization_markers()
                 self.choose_pepper()
-                # self.plot_masks(depth_img)
+                # self.plot_masks(image, depth_img)
 
                 self.fruit_count = 0
                 self.peduncle_count = 0
@@ -366,7 +366,7 @@ class PerceptionNode:
         self.poi_pub.publish(self.poi)
     
 
-    def plot_masks(self, depth_img):
+    def plot_masks(self, image, depth_img):
         for _, pepper in self.pepper_detections.items():
             fruit = pepper.pepper_fruit
             peduncle = pepper.pepper_peduncle

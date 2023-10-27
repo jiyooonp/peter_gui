@@ -7,7 +7,8 @@ import rospkg
 import tf2_ros
 import geometry_msgs.msg
 import yaml
-import tf_conversions
+# import tf_conversions
+from scipy.spatial.transform import Rotation
 
 
 """
@@ -29,8 +30,10 @@ class TfBroadcaster:
 
         
     def broadcast(self):
-        # rot = self.H[:3, :3]
-        quaternion = tf_conversions.transformations.quaternion_from_matrix(self.H)
+        rot = self.H[:3, :3]
+        # quaternion = tf_conversions.transformations.quaternion_from_matrix(self.H)
+        r = Rotation.from_matrix(rot) 
+        quaternion = r.as_quat()
         trans = self.H[:, 3]
         
         br = tf2_ros.StaticTransformBroadcaster()

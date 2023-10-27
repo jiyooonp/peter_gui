@@ -1,7 +1,7 @@
 <launch>
 
   <!-- params -->
-  <arg name="robot_ip" default="192.168.1.196"/>
+  <arg name="robot_ip" default="192.168.1.214"/>
   <arg name="joy_dev" default="/dev/input/js0" />
   <arg name="joystick" default="true" />
 
@@ -10,6 +10,7 @@
   <param name="arm_yaml" type="string" value="/config/amiga_arm.yaml" />
   <!-- <param name="arm_yaml" type="string" value="/config/benchtop_arm.yaml" /> -->
   <param name="xarm_robot_ip" type="string" value="$(arg robot_ip)"/>
+  <param name ="/use_sim_time" value="false"/>
 
   <!--joystick node-->
   <node name="joystick_node" pkg="joy" type="joy_node"></node>

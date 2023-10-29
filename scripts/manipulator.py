@@ -85,9 +85,18 @@ class Manipulator:
         self.arm.set_position(*self.basket_pregrasp, wait=True, speed=15) # move to basket pre-grasp
         self.cartesianMoveY(-0.15) # move forward to basket
 
+    def moveToInitFromBasket(self):
+        self.arm.load_trajectory('basket_to_init.traj')
+        self.arm.playback_trajectory()
+
     def test(self):
         print("TESTING")
+        # print(self.arm.get_position()[1])
+        self.arm.set_position(*self.basket_pregrasp, wait=True, speed=15) # move to basket pre-grasp
+        self.cartesianMoveY(-0.15) # move forward to basket
         print(self.arm.get_position()[1])
+        rospy.sleep(20)
+        # self.moveToInitFromBasket()
         # self.moveToInit()
         # self.moveToBasket()
         return
@@ -114,7 +123,7 @@ if __name__ == '__main__':
     try:
         xarm = Manipulator()
         while not rospy.is_shutdown():
-            # xarm.test()
+            xarm.test()
             rospy.sleep(0.1)
 
     except rospy.ROSInterruptException:

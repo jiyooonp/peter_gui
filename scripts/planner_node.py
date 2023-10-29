@@ -166,20 +166,20 @@ class PlannerNode:
             rospy.sleep(5) #fake harvest
             self.planner_state_pub.publish(7)
 
-        # move to basket and drop
+        # move to basket and drop then go back to init
         elif self.state == 8:
-            # self.manipulator.moveToBasket(0.1)
             try:
                 rospy.sleep(.1)
-                
                 xarm = Manipulator()
                 xarm.moveToBasket()
                 rospy.sleep(.1)
-                xarm.disconnect()
-                rospy.sleep(.1)
                 rospy.loginfo("Plan Execution: Move to Basket Complete")
                 self.send_to_ee("open")
-                rospy.sleep(5) #fake drop
+                rospy.sleep(.1)
+                xarm.moveToInitFromBasket()
+                xarm.disconnect()
+                rospy.sleep(.1)
+                rospy.sleep(5) #! fake drop (delete later)
                 self.planner_state_pub.publish(8)
             except:
                 rospy.loginfo("ERROR: UNABLE TO MOVE TO BASKET")

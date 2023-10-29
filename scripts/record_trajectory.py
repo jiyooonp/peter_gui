@@ -53,7 +53,7 @@ arm.set_state(0)
 arm.start_record_trajectory()
 
 # Analog recording process, here with delay instead
-time.sleep(20)
+time.sleep(15)
 
 arm.stop_record_trajectory()
 arm.save_record_trajectory('basket_to_init.traj')

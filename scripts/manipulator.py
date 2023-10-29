@@ -96,8 +96,12 @@ class Manipulator:
         self.cartesianMoveY(-0.15) # move forward to basket
         print(self.arm.get_position()[1])
         rospy.sleep(20)
+
+        # print("playing recorded trajectory")
         # self.moveToInitFromBasket()
+        # print("moving to init")
         # self.moveToInit()
+        # rospy.sleep(20)
         # self.moveToBasket()
         return
     

@@ -21,8 +21,8 @@ class Manipulator:
         self.pregrasp_offset = None
         self.ee_length_offset = None
         self.init_pose = None
-        self.basket_pregrasp = None
         self.orientation = None
+        self.neutral_pose = None
         self.ip = rospy.get_param('/xarm_robot_ip')
         arm_yaml = rospy.get_param('/arm_yaml')
         rospack = rospkg.RosPack()
@@ -47,13 +47,18 @@ class Manipulator:
         self.pregrasp_offset = data["pregrasp_offset"]
         self.ee_length_offset = data["ee_offset"]
         self.init_pose = data["init_pose"]
-        self.basket_pregrasp = data["basket_pregrasp"]
         self.orientation = data["orientation"]
+        self.neutral_pose = data["neutral"]
 
     def moveToInit(self):
         """move to initial position"""
         print("Moving to initial pose")
-        self.arm.set_position(*self.init_pose, wait=True, speed=20)
+        self.arm.set_position(*self.init_pose, wait=True, speed=30)
+
+    def moveToNeutral(self):
+        """move to initial position"""
+        print("Moving to initial pose")
+        self.arm.set_position(*self.neutral_pose, wait=True, speed=30)
 
     def cartesianMoveX(self,dist): # todo: test out set_servo_cartesian
         """cartesian move along x"""
@@ -76,29 +81,27 @@ class Manipulator:
         x -= self.pregrasp_offset
         x -= self.ee_length_offset
         # just using the orientation values from the init position
-        self.arm.set_position(x * 1000 ,y * 1000 ,z * 1000 ,*self.orientation[3:], wait=True, speed=20)
+        self.arm.set_position(x * 1000 ,y * 1000 ,z * 1000 ,*self.orientation[3:], wait=True, speed=30)
 
     def moveToBasket(self):
         """move to basket pose for pepper drop off"""
-        self.cartesianMoveX(-0.1) # move back 10 cm
-        print("moving to basket pregrasp")
-        self.arm.set_position(*self.basket_pregrasp, wait=True, speed=15) # move to basket pre-grasp
-        self.cartesianMoveY(-0.15) # move forward to basket
+        self.moveToNeutral()
+        self.arm.load_trajectory('to_basket.traj')
+        self.arm.playback_trajectory()
 
-    def moveToInitFromBasket(self):
-        self.arm.load_trajectory('basket_to_init.traj')
+    def moveFromBasket(self):
+        self.arm.load_trajectory('from_basket.traj')
         self.arm.playback_trajectory()
 
     def test(self):
         print("TESTING")
-        # print(self.arm.get_position()[1])
-        self.arm.set_position(*self.basket_pregrasp, wait=True, speed=15) # move to basket pre-grasp
-        self.cartesianMoveY(-0.15) # move forward to basket
         print(self.arm.get_position()[1])
-        rospy.sleep(20)
-        # self.moveToInitFromBasket()
-        # self.moveToInit()
-        # self.moveToBasket()
+
+        # pepper drop off and reset
+        # self.arm.moveToNeutral()
+        # self.arm.moveToBasket()
+        # self.arm.moveFromBasket()
+        # self.arm.moveToInit()
         return
     
     def disconnect(self):

@@ -172,14 +172,15 @@ class PlannerNode:
                 rospy.sleep(.1)
                 xarm = Manipulator()
                 xarm.moveToBasket()
-                rospy.sleep(.1)
+                rospy.sleep(15) # todo: test out disconnecting instead of sleep
                 rospy.loginfo("Plan Execution: Move to Basket Complete")
                 self.send_to_ee("open")
                 rospy.sleep(.1)
-                xarm.moveToInitFromBasket()
+                xarm.moveFromBasket()
+                rospy.sleep(10)
                 xarm.disconnect()
                 rospy.sleep(.1)
-                rospy.sleep(5) #! fake drop (delete later)
+                # rospy.sleep(5) # fake drop (delete later)
                 self.planner_state_pub.publish(8)
             except:
                 rospy.loginfo("ERROR: UNABLE TO MOVE TO BASKET")

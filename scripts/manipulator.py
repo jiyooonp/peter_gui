@@ -48,17 +48,17 @@ class Manipulator:
         self.ee_length_offset = data["ee_offset"]
         self.init_pose = data["init_pose"]
         self.orientation = data["orientation"]
-        self.neutral_pose = data["neutral"]
+        self.neutral_pose = data["neutral_pose"]
 
     def moveToInit(self):
         """move to initial position"""
         print("Moving to initial pose")
-        self.arm.set_position(*self.init_pose, wait=True, speed=30)
+        self.arm.set_position(*self.init_pose, wait=True, speed=25)
 
     def moveToNeutral(self):
         """move to initial position"""
-        print("Moving to initial pose")
-        self.arm.set_position(*self.neutral_pose, wait=True, speed=30)
+        print("Moving to neutral pose")
+        self.arm.set_position(*self.neutral_pose, wait=True, speed=25)
 
     def cartesianMoveX(self,dist): # todo: test out set_servo_cartesian
         """cartesian move along x"""
@@ -81,27 +81,30 @@ class Manipulator:
         x -= self.pregrasp_offset
         x -= self.ee_length_offset
         # just using the orientation values from the init position
-        self.arm.set_position(x * 1000 ,y * 1000 ,z * 1000 ,*self.orientation[3:], wait=True, speed=30)
+        self.arm.set_position(x * 1000 ,y * 1000 ,z * 1000 ,*self.orientation[3:], wait=True, speed=25)
 
     def moveToBasket(self):
         """move to basket pose for pepper drop off"""
-        self.moveToNeutral()
+        self.cartesianMoveX(-0.15)
+        print("Moving to basket pose")
         self.arm.load_trajectory('to_basket.traj')
         self.arm.playback_trajectory()
 
     def moveFromBasket(self):
+        """move away from basket pose"""
+        print("Moving from basket pose")
         self.arm.load_trajectory('from_basket.traj')
         self.arm.playback_trajectory()
 
     def test(self):
         print("TESTING")
-        print(self.arm.get_position()[1])
-
+        # print(self.arm.get_position()[1])
         # pepper drop off and reset
-        # self.arm.moveToNeutral()
-        # self.arm.moveToBasket()
-        # self.arm.moveFromBasket()
-        # self.arm.moveToInit()
+        self.moveToBasket()
+        rospy.sleep(15)
+        self.moveFromBasket()
+        rospy.sleep(10)
+        self.moveToInit()
         return
     
     def disconnect(self):
@@ -126,7 +129,7 @@ if __name__ == '__main__':
     try:
         xarm = Manipulator()
         while not rospy.is_shutdown():
-            xarm.test()
+            # xarm.test()
             rospy.sleep(0.1)
 
     except rospy.ROSInterruptException:

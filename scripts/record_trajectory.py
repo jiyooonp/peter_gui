@@ -56,7 +56,7 @@ arm.start_record_trajectory()
 time.sleep(15)
 
 arm.stop_record_trajectory()
-arm.save_record_trajectory('basket_to_init.traj')
+arm.save_record_trajectory('from_basket.traj')
 
 time.sleep(1)
 

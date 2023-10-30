@@ -92,7 +92,7 @@ class PerceptionNode:
 
         # Define the YOLO model
         self.yolo = YOLO(
-            package_path+'/weights/red.pt')
+            package_path+'/weights/levelb_2.pt')
         
         # Make marker for visualization
         self.peduncle_marker_rs =  self.make_marker(frame_id="camera_color_optical_frame")
@@ -252,7 +252,7 @@ class PerceptionNode:
                 xywh = result.boxes.xywh[i].cpu().numpy()
                 xywh[0], xywh[1] = int(xywh[1]), int(xywh[0])   # Switch from YOLO axes to NumPy axes
                 
-                if cls == 1:                                    # it is a pepper
+                if cls == 0:                                    # it is a pepper
                     pepper_detection = PepperFruit(self.fruit_count, xywh=xywh, mask=np.array(mask.cpu()), segment=segment)
                     self.fruit_detections[self.fruit_count] = pepper_detection
                     self.fruit_count+= 1

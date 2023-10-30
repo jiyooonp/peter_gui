@@ -22,7 +22,6 @@ class Manipulator:
         self.ee_length_offset = None
         self.init_pose = None
         self.orientation = None
-        self.neutral_pose = None
         self.ip = rospy.get_param('/xarm_robot_ip')
         arm_yaml = rospy.get_param('/arm_yaml')
         rospack = rospkg.RosPack()
@@ -48,17 +47,11 @@ class Manipulator:
         self.ee_length_offset = data["ee_offset"]
         self.init_pose = data["init_pose"]
         self.orientation = data["orientation"]
-        self.neutral_pose = data["neutral_pose"]
 
     def moveToInit(self):
         """move to initial position"""
         print("Moving to initial pose")
         self.arm.set_position(*self.init_pose, wait=True, speed=25)
-
-    def moveToNeutral(self):
-        """move to initial position"""
-        print("Moving to neutral pose")
-        self.arm.set_position(*self.neutral_pose, wait=True, speed=25)
 
     def cartesianMoveX(self,dist): # todo: test out set_servo_cartesian
         """cartesian move along x"""
@@ -85,7 +78,7 @@ class Manipulator:
 
     def moveToBasket(self):
         """move to basket pose for pepper drop off"""
-        self.cartesianMoveX(-0.15)
+        self.cartesianMoveX(-0.20) # move back 20 cm
         print("Moving to basket pose")
         self.arm.load_trajectory('to_basket.traj')
         self.arm.playback_trajectory()
@@ -98,13 +91,15 @@ class Manipulator:
 
     def test(self):
         print("TESTING")
-        # print(self.arm.get_position()[1])
+        print(self.arm.get_position()[1])
         # pepper drop off and reset
-        self.moveToBasket()
-        rospy.sleep(15)
-        self.moveFromBasket()
-        rospy.sleep(10)
-        self.moveToInit()
+        # self.moveToBasket()
+        # rospy.sleep(15)
+        # self.moveFromBasket()
+        # rospy.sleep(10)
+        # self.moveToInit()
+
+        # self.moveToInit()
         return
     
     def disconnect(self):

@@ -142,7 +142,16 @@ class Cluster:
         self.kf.F = np.eye(3)  # State transition matrix set to identity
         self.kf.H = np.eye(3)  # Measurement matrix
         self.kf.P *= 1e-4  # Initial uncertainty
-        self.kf.R = 0.01 * np.eye(3)  # Measurement noise #TODO Tune
+        
+        # self.kf.R = 0.01 * np.eye(3)  # Measurement noise #TODO Tune
+        
+        # take a bunch of observations from live data
+        # Note: This cov was taken from actual cluster covariance
+        self.kf.R = np.array(
+                    [[2.49044789e-06, 1.73915322e-07, 4.48913473e-07],
+                     [1.73915322e-07, 2.42423576e-06, 1.17792215e-06],
+                     [4.48913473e-07, 1.17792215e-06, 1.12009796e-05]])
+        
         self.kf.Q = np.zeros((3, 3))  # Process noise set to zero
         
         self.id = id
@@ -162,6 +171,7 @@ class Cluster:
         #     [transformation.translation.x, 
         #      transformation.translation.y, 
         #      transformation.translation.z])
+        
         ee_loc = np.array(
             [0, 
              0, 

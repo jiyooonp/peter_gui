@@ -12,7 +12,23 @@ import time
 import numpy as np
 import matplotlib.pyplot as plt
 
+import rospkg
+import os
+rospack = rospkg.RosPack()
+package_name = 'fvd_ws'
+package_path = rospack.get_path(package_name)
 
+# if the clusters has been around for a while and 
+# we have too few observations get rid of it
+
+TIME_SINCE_BIRTH_METRIC = 100 # [s]
+OBSERVATIONS_METRIC = 20 # unitless
+
+# if the cluster hasn't been seen in a while get rid of it
+TIME_SINCE_LAST_OB_METRIC = 10
+
+# nearest neighbor metric
+NEAREST_NEIGHBOR_METRIC = 0.05 # [m]
 
 
 class PepperFilterNode:
@@ -51,7 +67,7 @@ class PepperFilterNode:
             # if it does  kalman filter it
             min_ind, min_dist = min(dists, key=lambda d: d[1])
             
-            if min_dist < 0.05:
+            if min_dist < NEAREST_NEIGHBOR_METRIC
                 self.clusters[min_ind].filter(new_cluster.center)               
             # if it doesn't, make a new cluster
             else:
@@ -61,11 +77,12 @@ class PepperFilterNode:
             for c in self.clusters:
                 if c.cleanup(): 
                     self.clusters.remove(c)
-                    
-            self.clusters = sorted(self.clusters, key=lambda p: p.dist_from_ee)
             
-            if self.clusters:
-                self.visualize()
+            sorting_criteria = lambda p: p.dist_from_ee*p.observations
+            self.clusters = sorted(self.clusters, key=sorting_criteria)
+            
+            # if self.clusters:
+                # self.visualize()
                 
             rospy.loginfo("===============================================")
             for c in self.clusters: rospy.loginfo(c)
@@ -111,7 +128,7 @@ class PepperFilterNode:
         # Adjust layout
         plt.tight_layout()
         
-        plt.savefig("kalman_filter.png")
+        plt.savefig(os.path.join(package_path + "/kalman_filter.png"))
 
         # Close the plot to free up memory
         plt.close(fig)
@@ -196,11 +213,11 @@ class Cluster:
         self.center = self.kf.x
     
     def cleanup(self):
-        #TODO tune this!!!!!!!!
-        if self.time_since_birth() > 100 and self.observations < 15:
+        
+        if self.time_since_birth() > TIME_SINCE_BIRTH_METRIC and self.observations < OBSERVATIONS_METRIC:
             return True 
         
-        if self.time_since_last_ob() > 10:
+        if self.time_since_last_ob() > TIME_SINCE_LAST_OB_METRIC:
             return True
         
         

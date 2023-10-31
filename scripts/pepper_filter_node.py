@@ -4,7 +4,7 @@ import rospy
 from visualization_msgs.msg import Marker
 from geometry_msgs.msg import Point
 import tf2_ros
-
+from std_msgs.msg import Int16
 
 from filterpy.kalman import KalmanFilter
 from scipy.linalg import norm
@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 import rospkg
 import os
 rospack = rospkg.RosPack()
-package_name = 'fvd_ws'
+package_name = 'peter'
 package_path = rospack.get_path(package_name)
 
 # if the clusters has been around for a while and 
@@ -46,7 +46,6 @@ class PepperFilterNode:
         
         # filtered poi publisher
         self.poi_pub = rospy.Publisher('/poi', Point, queue_size=1)
-        
 
     def pep_callback(self, data):
         
@@ -84,8 +83,8 @@ class PepperFilterNode:
             # if self.clusters:
                 # self.visualize()
                 
-            rospy.loginfo("===============================================")
-            for c in self.clusters: rospy.loginfo(c)
+            # rospy.loginfo("===============================================")
+            # for c in self.clusters: rospy.loginfo(c)
 
                 
     def run(self):
@@ -96,6 +95,8 @@ class PepperFilterNode:
                 self.clusters[0].y, 
                 self.clusters[0].z
                 )
+            
+            # if self.state != 6: moveToPregrasp
             
             self.poi_pub.publish(poi)
         
@@ -183,16 +184,18 @@ class Cluster:
     
     def calc_dist_from_ee(self):
         
-        # transformation = self.tfBuffer.lookup_transform("link_base", "camera_color_optical_frame", rospy.Time.now(), rospy.Duration(0.1))
-        # ee_loc = np.array(
-        #     [transformation.translation.x, 
-        #      transformation.translation.y, 
-        #      transformation.translation.z])
-        
+        rospy.sleep(0.1)
+        transformation = self.tfBuffer.lookup_transform("link_base", "camera_color_optical_frame", 
+                                                        rospy.Time.now(), rospy.Duration(0.5))
         ee_loc = np.array(
-            [0, 
-             0, 
-             0])
+            [transformation.transform.translation.x, 
+             transformation.transform.translation.y, 
+             transformation.transform.translation.z])
+        
+        # ee_loc = np.array(
+        #     [0, 
+        #      0, 
+        #      0])
         
         self.dist_from_ee = norm(self.center - ee_loc)
     

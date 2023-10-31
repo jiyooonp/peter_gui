@@ -365,7 +365,7 @@ class PerceptionNode:
 
             break
 
-        self.poi_pub.publish(self.poi)
+        # self.poi_pub.publish(self.poi)
     
 
     def plot_masks(self, image, depth_img):

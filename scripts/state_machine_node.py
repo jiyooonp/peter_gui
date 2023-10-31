@@ -159,7 +159,7 @@ class StateMachineNode:
         # basket drop
         elif self.state == 9 and self.plan_executed == 9 and not self.manipulator_moving:
             # if more pepper seen in pepper detection topic
-                self.state = 9
+                self.state = 4
             # else:
                 rospy.loginfo_throttle_identical(10,"done with autonomous harvesting sequence")
 

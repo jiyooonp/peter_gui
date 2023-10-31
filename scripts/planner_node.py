@@ -143,12 +143,10 @@ class PlannerNode:
         elif self.state == 6:
             try:
                 xarm = Manipulator()
-                # todo: need to change this to get the matched pepper poi
                 if self.poi:
                     rospy.logwarn(f"POI!!!!!! >>  {self.poi}")
                     self.perception_communication_pub.publish(True)
                     xarm.moveToPregrasp(self.poi.x, self.poi.y, self.poi.z)
-
                 else:
                     rospy.logwarn("NO POI DETCTED YET!!!")
                 rospy.sleep(.1)

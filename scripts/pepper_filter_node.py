@@ -67,7 +67,7 @@ class PepperFilterNode:
             # if it does  kalman filter it
             min_ind, min_dist = min(dists, key=lambda d: d[1])
             
-            if min_dist < NEAREST_NEIGHBOR_METRIC
+            if min_dist < NEAREST_NEIGHBOR_METRIC:
                 self.clusters[min_ind].filter(new_cluster.center)               
             # if it doesn't, make a new cluster
             else:
@@ -78,7 +78,7 @@ class PepperFilterNode:
                 if c.cleanup(): 
                     self.clusters.remove(c)
             
-            sorting_criteria = lambda p: p.dist_from_ee*p.observations
+            sorting_criteria = lambda p: p.dist_from_ee*(p.observations**-1)
             self.clusters = sorted(self.clusters, key=sorting_criteria)
             
             # if self.clusters:

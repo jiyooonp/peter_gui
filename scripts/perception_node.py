@@ -12,25 +12,22 @@ from visualization_msgs.msg import Marker
 import message_filters
 
 import cv2
-import torch
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image as PILImage
+from ultralytics import YOLO
+
 
 import tf2_ros
 from tf.transformations import quaternion_matrix
 
-from ultralytics import YOLO
 
 import os
 import io
-import random
 
 from pepper_util import PepperPeduncle, PepperFruit, Pepper
 from match_peppers_util import match_pepper_fruit_peduncle
-
-import matplotlib.pyplot as plt
 from perception_util import *
 
 class PerceptionNode:
@@ -87,6 +84,8 @@ class PerceptionNode:
 
         self.xarm_moving_sub = rospy.Subscriber('/xarm_moving', Bool, self.xarm_moving_callback, queue_size=1)
 
+        _ = rospy.Subscriber('/user_selected_poi', Point, self.user_input_callback, queue_size=1)
+
         # TODO set to (0, 0, 0)
         self.poi = Point()
         self.state = None
@@ -112,6 +111,10 @@ class PerceptionNode:
         self.vis_peduncle_list = []
 
         self.xarm_moving = False
+
+        # user input
+        self.user_input_mode = True
+        self.user_selected_poi = (-1, -1)
         
         
     def img_depth_callback(self, img, depth_img):
@@ -125,6 +128,8 @@ class PerceptionNode:
         except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
             print("Error getting the transform")
         
+    def user_input_callback(self, msg):
+        self.user_selected_poi = (msg.x, msg.y)
 
     def detect_peppers(self, img, depth, transformation):
 
@@ -281,7 +286,10 @@ class PerceptionNode:
     
 
     def peduncle_pose(self, peduncle, pepper_depth, depth_img, transformation):
-        x, y = peduncle.set_point_of_interaction()
+        if self.user_input_mode:
+            x, y = self.user_selected_poi
+        else:
+            x, y = peduncle.set_point_of_interaction()
 
         if x == -1 and y == -1:
             return None, None

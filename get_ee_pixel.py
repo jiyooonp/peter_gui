@@ -13,7 +13,7 @@ bridge = CvBridge()
 cv_image = None
 click_position = None  # Store the click position
 image_counter = 10  # Initialize counter to a value >= 10 to not draw initially
-custom_poi_publisher = rospy.Publisher("/custom_poi", Point, queue_size=10)
+custom_poi_publisher = rospy.Publisher("/user_selected_poi", Point, queue_size=10)
 
 def on_click(event):
     global click_position, image_counter
@@ -22,7 +22,7 @@ def on_click(event):
     print(f"Clicked at: x={event.x}, y={event.y}")
     selected_point = Point(click_position[0], click_position[1], 0)
     custom_poi_publisher.publish(selected_point)
-    
+
 def image_callback(msg):
     global cv_image, image_counter
     cv_image = bridge.imgmsg_to_cv2(msg, desired_encoding="passthrough")

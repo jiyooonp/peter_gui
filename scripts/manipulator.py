@@ -90,15 +90,15 @@ class Manipulator:
         print(self.arm.get_position()[1])
 
         # move to init and multiframe
-        self.moveToInit()
+        # self.moveToInit()
         # self.multiframe()
 
         # pepper drop off and reset
-        # self.moveToBasket()
-        # rospy.sleep(15)
-        # self.moveFromBasket()
-        # rospy.sleep(10)
-        # self.moveToInit()
+        self.moveToBasket()
+        rospy.sleep(10)
+        self.moveFromBasket()
+        rospy.sleep(10)
+        self.moveToInit()
 
         # self.moveToInit()
         return

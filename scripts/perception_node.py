@@ -22,6 +22,7 @@ import message_filters
 
 import tf2_ros
 from tf.transformations import quaternion_matrix
+from scipy.spatial.transform import Rotation as R
 
 from ultralytics import YOLO
 
@@ -101,6 +102,7 @@ class PerceptionNode:
         self.fruit_marker_base =  self.make_marker(marker_type=8, frame_id='link_base', r= 0, g=1, b=0, a=1, x=0.06, y=0.06)
 
         self.peduncle_poses_base = PoseArray() 
+        self.peduncle_poses_base.header.frame_id = 'link_base'
 
         self.peduncle_mask_rs = self.make_marker(marker_type=8, frame_id='camera_color_optical_frame', r= 1, g=0, b=0, a=1, x=0.02, y=0.02)
 
@@ -309,8 +311,22 @@ class PerceptionNode:
     def get_pose_object(self, position, orientation):
         pose = Pose()
         pose.position = Point(x=position[0], y=position[1], z=position[2])
-        w = 0 if orientation[0] != 0 or orientation[1] != 0 or orientation[2] != 0 else 1
-        pose.orientation = Quaternion(x=orientation[0], y=orientation[1], z=orientation[2], w=w)
+        orientation = np.array([orientation[0], orientation[1], orientation[2]])
+        orientation = orientation/np.linalg.norm(orientation)
+
+        if orientation[0] == 0 and orientation[1] == 0 and orientation[2] == 1:
+            cross_vector = np.array([0, 1, 0])  
+        else: 
+            cross_vector = np.array([0, 0, 1])
+
+        cross1 = np.cross(orientation, cross_vector)
+        cross2 = np.cross(orientation, cross1)
+        rotation = np.array([orientation, cross1, cross2]).T
+
+        r = R.from_matrix(rotation)
+        quat = r.as_quat()
+        pose.orientation = Quaternion(x=quat[0], y=quat[1], z=quat[2], w=quat[3])
+
         return pose
     
 
@@ -327,12 +343,13 @@ class PerceptionNode:
         if self.peduncle_marker_rs.points == []:
             self.peduncle_marker_rs.points.append(Point(0, 0, 0))
             self.peduncle_marker_base.points.append(Point(0, 0, 0))
-            self.peduncle_poses_base.poses.append(self.get_pose_object([0, 0, 0], [0, 0, 0]))
+            self.peduncle_poses_base.poses.append(self.get_pose_object([0, 0, 0], [0, 0, 1]))
 
         self.peduncle_marker_rs.header.stamp = rospy.Time.now()
         self.peduncle_marker_rs_pub.publish(self.peduncle_marker_rs)
         self.peduncle_marker_base.header.stamp = rospy.Time.now()
         self.peduncle_marker_base_pub.publish(self.peduncle_marker_base)
+        self.peduncle_poses_base.header.stamp = rospy.Time.now()
         self.peduncle_poses_base_pub.publish(self.peduncle_poses_base)
 
     
@@ -362,7 +379,7 @@ class PerceptionNode:
             return None, None, None
         
         z = max(min(self.get_depth(depth_img, x, y), fruit_depth + 0.03), fruit_depth)        # TODO tune this
-        z_next = max(min(self.get_depth(depth_img, x_next, y_next), z + 0.005), z - 0.005)    # TODO tune this
+        z_next = max(min(self.get_depth(depth_img, x_next, y_next), z + 0.01), z - 0.01)    # TODO tune this
 
         # RS axes
         X_rs, Y_rs, Z_rs = self.get_3D_coords(x, y, z)

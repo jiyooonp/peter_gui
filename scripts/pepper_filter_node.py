@@ -46,6 +46,8 @@ class PepperFilterNode:
         
         # filtered poi publisher
         self.poi_pub = rospy.Publisher('/poi', Point, queue_size=1)
+        
+        self.poi_viz = rospy.Publisher("/poi_viz", Marker, queue_size=1)
 
     def pep_callback(self, data):
         
@@ -86,6 +88,7 @@ class PepperFilterNode:
             # rospy.loginfo("===============================================")
             # for c in self.clusters: rospy.loginfo(c)
 
+
                 
     def run(self):
         if self.clusters:
@@ -96,9 +99,31 @@ class PepperFilterNode:
                 self.clusters[0].z
                 )
             
-            # if self.state != 6: moveToPregrasp
+            poi_marker = self.make_marker(
+                self.clusters[0].x, 
+                self.clusters[0].y, 
+                self.clusters[0].z
+            )
             
             self.poi_pub.publish(poi)
+            self.poi_viz.publish(poi_marker)
+            
+    def make_marker(self, x, y, z, marker_type=2, frame_id='camera_color_optical_frame', 
+                    r= 1, g=0, b=0, a=1, x_scale=0.025, y_scale=0.025):
+        marker = Marker()
+        marker.type = marker_type
+        marker.header.frame_id = frame_id
+        marker.pose.position.x = x
+        marker.pose.position.y = y
+        marker.pose.position.z = z
+        marker.color.r = r
+        marker.color.g = g
+        marker.color.b = b
+        marker.color.a = a
+        marker.scale.x = x_scale
+        marker.scale.y = y_scale
+
+        return marker
         
     def visualize(self):
         
@@ -222,6 +247,9 @@ class Cluster:
         
         if self.time_since_last_ob() > TIME_SINCE_LAST_OB_METRIC:
             return True
+        
+        
+    
         
         
 

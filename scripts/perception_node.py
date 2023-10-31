@@ -358,7 +358,7 @@ class PerceptionNode:
         for _, pepper in self.pepper_detections.items(): 
             peduncle = pepper.pepper_peduncle
 
-            if self.state != 5:
+            if self.state != 6: # TODO: update based on move to pregrasp state
                 self.poi.x = peduncle.xyz_base[0]
                 self.poi.y = peduncle.xyz_base[1]
                 self.poi.z = peduncle.xyz_base[2]

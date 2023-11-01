@@ -79,7 +79,7 @@ class PepperFilterNode:
                 if c.cleanup(): 
                     self.clusters.remove(c)
             
-            sorting_criteria = lambda p: p.dist_from_ee*(p.observations**-1)
+            sorting_criteria = lambda p: p.dist_from_ee
             self.clusters = sorted(self.clusters, key=sorting_criteria)
             
             # if self.clusters:
@@ -108,20 +108,25 @@ class PepperFilterNode:
             self.poi_pub.publish(poi)
             self.poi_viz.publish(poi_marker)
             
-    def make_marker(self, x, y, z, marker_type=2, frame_id='camera_color_optical_frame', 
-                    r= 1, g=0, b=0, a=1, x_scale=0.025, y_scale=0.025):
+    def make_marker(self, x, y, z, marker_type=2, frame_id='link_base', 
+                    r= 1, g=0, b=0, a=1, scale=0.025):
         marker = Marker()
         marker.type = marker_type
         marker.header.frame_id = frame_id
         marker.pose.position.x = x
         marker.pose.position.y = y
         marker.pose.position.z = z
+        marker.pose.orientation.x = 0
+        marker.pose.orientation.y = 0
+        marker.pose.orientation.z = 0
+        marker.pose.orientation.w = 1
         marker.color.r = r
         marker.color.g = g
         marker.color.b = b
         marker.color.a = a
-        marker.scale.x = x_scale
-        marker.scale.y = y_scale
+        marker.scale.x = scale
+        marker.scale.y = scale
+        marker.scale.z = scale
 
         return marker
         

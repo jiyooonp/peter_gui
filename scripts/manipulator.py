@@ -3,11 +3,12 @@ import os
 import yaml
 import rospy
 import rospkg
+import math
 from xarm.wrapper import XArmAPI
 from xarm.version import __version__
 from visualization_msgs.msg import Marker
 from geometry_msgs.msg import Point
-
+from scipy.spatial.transform import Rotation as R
 
 """
 Move the xArm using API calls 
@@ -34,6 +35,7 @@ class Manipulator:
         self.arm.connect()
         self.arm.set_mode(0)
         self.arm.set_state(0)
+        
 
     def parseYaml(self, yaml_file, package_path):
         """parse the yaml to get parameters"""
@@ -64,12 +66,44 @@ class Manipulator:
         x -= self.ee_length_offset
         self.arm.set_position(x * 1000 ,y * 1000 ,z * 1000 ,*self.orientation[3:], wait=True, speed=25)
 
+    def moveToPregrasp(self,poi_pose):
+        # get the position and orientation
+        x = poi_pose.position.x
+        y = poi_pose.position.x
+        z = poi_pose.position.x
+        quat = poi_pose.orientation
+
+        # add x offsets
+        x -= self.pregrasp_offset
+        x -= self.ee_length_offset
+
+        # convert quat to rotation matrix
+        r = R.from_quat([quat.x, quat.y, quat.z, quat.w])
+        rot_mat = r.as_matrix()
+        
+        # take the y and z components
+        y_comp = rot_mat[1,0]
+        z_comp = rot_mat[2,0]
+
+        # calculate the roll angle
+        theta = math.atan2(y_comp, z_comp)
+        self.orientation[0] = math.pi - theta
+
+        # move to new position
+        self.arm.set_position(x * 1000 ,y * 1000 ,z * 1000 ,*self.orientation[0:], wait=True, speed=25)
+
     def moveToPoi(self):
         self.cartesianMove(self.pregrasp_offset,0) # move forward in x
 
+    def orientParallel(self):
+        current_pos = self.arm.get_position()[1]
+        self.arm.set_position(*current_pos[0:3] ,*self.orientation[0:], wait=True, speed=25)
+
     def moveToBasket(self):
         """move to basket pose for pepper drop off"""
-        self.cartesianMove(-0.20,0) # move back 20 cm in x
+        self.cartesianMove(-0.05,0) # move back 5 cm
+        self.orientParallel() # straighten orientation
+        self.cartesianMove(-0.15,0) # move back 15 cm
         print("Moving to basket pose")
         self.arm.load_trajectory('to_basket.traj')
         self.arm.playback_trajectory()

@@ -4,7 +4,7 @@ import rospy
 import math
 from sensor_msgs.msg import Joy
 from std_msgs.msg import Int16, Bool
-from geometry_msgs.msg import Twist, Point
+from geometry_msgs.msg import Twist, Point, Pose
 from xarm_msgs.msg import RobotMsg
 from manipulator import Manipulator
 from ag_gripper_driver.srv import Pegasus, PegasusResponse
@@ -36,7 +36,7 @@ class PlannerNode:
         # subscribers
         self.state_sub = rospy.Subscriber('/state', Int16, self.state_callback, queue_size=1) # state message
         self.joystick_sub = rospy.Subscriber('/joy', Joy, self.joystick_callback, queue_size=1) # joystick message        
-        self.poi_sub = rospy.Subscriber('/poi', Point, self.poi_callback, queue_size=1) # visual servoing messages
+        self.pose_sub = rospy.Subscriber('/pose', Pose, self.pose_callback, queue_size=1) # visual servoing messages
 
         # publishers
         # todo: can remove the joy relay topic and just use joy now that we dont have "fake joy" anymore
@@ -65,7 +65,7 @@ class PlannerNode:
         """Callback for POI message"""
         # update joy state
         self.poi = data
-    
+
     def send_to_ee(self, command):
         # send commands to open, harvest, or close
         # need to wait for confirmation this is done before returning
@@ -105,7 +105,8 @@ class PlannerNode:
 
         # return to init - manual only
         elif self.state == 3:
-            self.manipulator.moveToInit()
+            xarm = Manipulator()
+            xarm.moveToInit()
             rospy.sleep(1)
 
         # ----- Initializing Autonomous Procedure -----
@@ -146,7 +147,7 @@ class PlannerNode:
                 if self.poi:
                     rospy.logwarn(f"POI!!!!!! >>  {self.poi}")
                     self.perception_communication_pub.publish(True)
-                    xarm.moveToPregrasp(self.poi.x, self.poi.y, self.poi.z)
+                    xarm.moveToPregrasp(self.poi)
                 else:
                     rospy.logwarn("NO POI DETCTED YET!!!")
                 rospy.sleep(.1)
@@ -204,7 +205,7 @@ class PlannerNode:
             rospy.loginfo("ERROR: UNRECOGNIZED STATE IN PLANNER NODE")
             self.state_pub.publish(10)
             
-        if self.poi: self.visualizePregrasp(self.poi.x, self.poi.y, self.poi.z)
+        if self.poi: self.visualizePregrasp(self.poi.position.x, self.poi.position.y, self.poi.position.z)
 
     def make_marker(self, marker_type=8, frame_id='camera_color_optical_frame', r= 1, g=0, b=0, a=1, x=0.05, y=0.05):
         marker = Marker()

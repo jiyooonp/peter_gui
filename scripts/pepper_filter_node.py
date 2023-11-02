@@ -2,7 +2,7 @@
 
 import rospy
 from visualization_msgs.msg import Marker
-from geometry_msgs.msg import Pose, Point, Quaternion
+from geometry_msgs.msg import Pose, Point, Quaternion, PoseArray
 import tf2_ros
 from std_msgs.msg import Int16
 
@@ -43,7 +43,7 @@ class PepperFilterNode:
         self.clusters = []
         
         # subs
-        self.pepper_base_sub = rospy.Subscriber("/visualization_peduncle_poses_base", Marker, self.pep_callback, queue_size=1)
+        self.pepper_base_sub = rospy.Subscriber("/visualization_peduncle_poses_base", PoseArray, self.pep_callback, queue_size=1)
         
         # filtered poi publisher
         self.poi_pub = rospy.Publisher('/poi', Pose, queue_size=1)

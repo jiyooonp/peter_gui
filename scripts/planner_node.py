@@ -36,7 +36,7 @@ class PlannerNode:
         # subscribers
         self.state_sub = rospy.Subscriber('/state', Int16, self.state_callback, queue_size=1) # state message
         self.joystick_sub = rospy.Subscriber('/joy', Joy, self.joystick_callback, queue_size=1) # joystick message        
-        self.pose_sub = rospy.Subscriber('/pose', Pose, self.pose_callback, queue_size=1) # visual servoing messages
+        self.pose_sub = rospy.Subscriber('/pose', Pose, self.poi_callback, queue_size=1) # visual servoing messages
 
         # publishers
         # todo: can remove the joy relay topic and just use joy now that we dont have "fake joy" anymore

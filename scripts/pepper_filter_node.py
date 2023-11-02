@@ -47,7 +47,7 @@ class PepperFilterNode:
         
         # filtered poi publisher
         self.poi_pub = rospy.Publisher('/poi', Pose, queue_size=1)
-        self.poi_viz = rospy.Publisher("/poi_viz", Pose, queue_size=1)
+        self.poi_viz = rospy.Publisher("/poi_viz", Marker, queue_size=1)
 
     def pep_callback(self, data):
         
@@ -69,7 +69,7 @@ class PepperFilterNode:
             min_ind, min_dist = min(dists, key=lambda d: d[1])
             
             if min_dist < NEAREST_NEIGHBOR_METRIC:
-                self.clusters[min_ind].filter(new_cluster.center)               
+                self.clusters[min_ind].filter(new_cluster.center, new_cluster.vec)               
             # if it doesn't, make a new cluster
             else:
                 self.clusters.append(new_cluster)
@@ -93,9 +93,21 @@ class PepperFilterNode:
     def run(self):
         if self.clusters:
             
-            poi_marker = self.clusters[0].get_pose_object()
+            poi_pose = self.clusters[0].get_pose_object()
+
+            poi_marker = Marker()
+            poi_marker.type = 0
+            poi_marker.header.frame_id = "link_base"
+            poi_marker.pose = poi_pose
+            poi_marker.color.r = 0
+            poi_marker.color.g = 1
+            poi_marker.color.b = 1
+            poi_marker.color.a = 1
+            poi_marker.scale.x = 0.08
+            poi_marker.scale.y = 0.008
+            poi_marker.scale.z = 0.008
             
-            self.poi_pub.publish(poi_marker)
+            self.poi_pub.publish(poi_pose)
             self.poi_viz.publish(poi_marker)
     
             
@@ -161,7 +173,8 @@ class Cluster:
         
         # define the cluster center
         self.center = np.array([position.x, position.y, position.z])
-        self.orientation = self.quat_to_vec(orientation)
+        self.quat = np.array([orientation.x, orientation.y, orientation.z, orientation.w])
+        self.vec = self.quat_to_vec(self.quat)
         
         self.tfBuffer = tf2_ros.Buffer()
         self.listener = tf2_ros.TransformListener(self.tfBuffer)
@@ -177,7 +190,7 @@ class Cluster:
         
         # make a filter for the cluster
         self.kf = KalmanFilter(dim_x=6, dim_z=6)
-        self.kf.x = np.concatenate([self.center, self.orientation])
+        self.kf.x = np.reshape(np.concatenate([self.center, self.vec]), newshape=(-1, 1))
         self.kf.F = np.eye(6)  # State transition matrix set to identity
         self.kf.H = np.eye(6)  # Measurement matrix
         self.kf.P *= 1e-4  # Initial uncertainty
@@ -208,12 +221,10 @@ class Cluster:
     def dist(self, cluster):
         return norm(self.center - cluster.center)
     
-    def quat_to_vec(self, orientation):
+    def quat_to_vec(self, quat):
         
-        orientation = np.array(*self.orientation)
-
-        quat = R.from_quat(orientation)
-        rot = quat.as_matrix()
+        quat_ = R.from_quat(quat)
+        rot = quat_.as_matrix()
         
         # project take y component 
         return np.array([0, rot[0, 1], rot[0, 2]])
@@ -221,14 +232,17 @@ class Cluster:
     def vec_to_quat(self, vec):
         
         cross_vector = np.zeros(3)
-        if vec == np.array([0, 0, 1]):
+        if np.array_equal(vec, np.array([0, 0, 1])):
             cross_vector = np.array([0, 1, 0])  
         else: 
             cross_vector = np.array([0, 0, 1])
 
-        cross1 = np.cross(vec, cross_vector)
-        cross2 = np.cross(vec, cross1)
-        rotation = np.array([vec, cross1, cross2]).T
+
+        cross1 = np.cross(np.squeeze(vec), cross_vector)
+        cross2 = np.cross(np.squeeze(vec), cross1)
+        # rospy.logwarn(f"{np.squeeze(vec).shape} | {cross1.shape} | {cross2.shape}")
+
+        rotation = np.vstack([np.squeeze(vec), cross1, cross2]).T
 
         r = R.from_matrix(rotation)
         quat = r.as_quat()
@@ -259,7 +273,9 @@ class Cluster:
     def time_since_last_ob(self):
         return time.time() - self.last_ob_time
     
-    def filter(self, measurement):
+    def filter(self, center, orient):
+
+        measurement = np.concatenate([center, orient])
         
         self.observations += 1
         self.last_ob_time = time.time()
@@ -268,7 +284,8 @@ class Cluster:
         self.kf.update(measurement)
         
         self.center = self.kf.x[:3]
-        self.orientation = self.kf.x[3:]
+        self.vec = self.kf.x[3:]
+        self.quat = self.vec_to_quat(self.vec)
 
     
     def cleanup(self):
@@ -285,7 +302,7 @@ class Cluster:
         pose = Pose()
         pose.position = Point(*self.center)
         
-        quat = self.quat_to_vec(self.orientation)
+        quat = self.vec_to_quat(self.vec)
         pose.orientation = Quaternion(*quat)
         
         return pose

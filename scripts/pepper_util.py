@@ -9,18 +9,18 @@ from typing import List, Optional
 class Curve:
 
     def __init__(self, direction: str = None, curve_x: np.array = None, curve_y: np.array = None, params: np.array = None):
-        self._parabola_direction = direction
+        self._peduncle_direction = direction
         self._curve_x = curve_x
         self._curve_y = curve_y
         self._params = params
 
     @property
-    def parabola_direction(self):
-        return self._parabola_direction
+    def peduncle_direction(self):
+        return self._peduncle_direction
 
-    @parabola_direction.setter
-    def parabola_direction(self, direction):
-        self._parabola_direction = direction
+    @peduncle_direction.setter
+    def peduncle_direction(self, direction):
+        self._peduncle_direction = direction
 
     @property
     def curve_x(self):
@@ -56,20 +56,20 @@ class Curve:
     
 
     def curve_length(self, idx):
-        if self._parabola_direction == 'vertical':
+        if self._peduncle_direction == 'horizontal':
             return abs(quad(self.curve_length_derivative, self._curve_y[0], self._curve_y[idx])[0])
         else:
             return abs(quad(self.curve_length_derivative, self._curve_x[0], self._curve_x[idx])[0])
         
 
     def full_curve_length(self):
-        if self._parabola_direction == 'vertical':
+        if self._peduncle_direction == 'horizontal':
             return abs(quad(self.curve_length_derivative, self._curve_y[0], self._curve_y[-1])[0])
         else:
             return abs(quad(self.curve_length_derivative, self._curve_x[0], self._curve_x[-1])[0])
 
     
-    def fit_curve_to_mask(self, mask):
+    def fit_curve_to_mask(self, mask, fruit_xywh, peduncle_xywh):
 
         medial_img, _ = medial_axis(mask, return_distance=True)
 
@@ -88,28 +88,40 @@ class Curve:
         fit_curve_y = self.parabola(x, a, b, c)
 
         if np.linalg.norm(x - fit_curve_x) < np.linalg.norm(y - fit_curve_y):
-            self._parabola_direction = 'vertical'
+            self._peduncle_direction = 'horizontal'
             self._params = params1
 
-            # TODO add full code
-            # Sorted assuming that the pepper to the left of the peduncle
-            # Sorting with respect to y in ascending order
-            sorted_x = np.array([x for _, x in sorted(zip(y, x))])
-            sorted_y = np.array([y for y, _ in sorted(zip(y, x))])
+            # xywh: x: along rows, y: along columns
+            if fruit_xywh[1] < peduncle_xywh[1]:
+                # Sorted assuming that the pepper to the left of the peduncle
+                # Sorting with respect to y in ascending order
+                sorted_x = np.array([x for _, x in sorted(zip(y, x))])
+                sorted_y = np.array([y for y, _ in sorted(zip(y, x))])
+            else:
+                # Sorted assuming that the pepper to the right of the peduncle
+                # Sorting with respect to y in descending order
+                sorted_x = np.flip(np.array([x for _, x in sorted(zip(y, x))]))
+                sorted_y = np.flip(np.array([y for y, _ in sorted(zip(y, x))]))
             
             self._curve_y = sorted_y
             self._curve_x = sorted_x
             # self._curve_x = self.parabola(sorted_y, self._params[0], self._params[1], self._params[2])
         else:
-            self._parabola_direction = 'horizontal'
+            self._peduncle_direction = 'vertical'
             self._params = params2
         
-            # TODO add full code
-            # Sorted assuming that the pepper is above the peduncle
-            # Sorted with respect to x in ascending order
-            sorted_x = np.array([x for x, _ in sorted(zip(x, y))])
-            sorted_y = np.array([y for _, y in sorted(zip(x, y))])
-            
+            # xywh: x: along rows, y: along columns
+            if fruit_xywh[0] < peduncle_xywh[0]:
+                # Sorted assuming that the pepper is above the peduncle
+                # Sorted with respect to x in ascending order
+                sorted_x = np.array([x for x, _ in sorted(zip(x, y))])
+                sorted_y = np.array([y for _, y in sorted(zip(x, y))])
+            else:
+                # Sorted assuming that the pepper is below the peduncle
+                # Sorted with respect to x in descending order
+                sorted_x = np.flip(np.array([x for x, _ in sorted(zip(x, y))]))
+                sorted_y = np.flip(np.array([y for _, y in sorted(zip(x, y))]))
+                    
             self._curve_x = sorted_x
             self._curve_y = sorted_y
             # self._curve_y = self.parabola(sorted_x, self._params[0], self._params[1], self._params[2])
@@ -127,9 +139,11 @@ class PepperPeduncle:
         self._xywh = xywh
         self._curve = Curve()
         self._poi_px = None
+        self._next_point_px = None
         self.segment = segment
         self._xyz_rs = None
         self._xyz_base = None
+        self._orientation_base = None
 
     @property
     def number(self):
@@ -178,6 +192,14 @@ class PepperPeduncle:
         self._poi_px = poi_px
 
     @property
+    def next_point_px(self):
+        return self._next_point_px
+
+    @next_point_px.setter
+    def next_point_px(self, next_point_px):
+        self._next_point_px = next_point_px
+
+    @property
     def xyz_rs(self):
         return self._xyz_rs
     
@@ -193,28 +215,38 @@ class PepperPeduncle:
     def xyz_base(self, xyz_base):
         self._xyz_base = xyz_base
 
+    @property
+    def orientation_base(self):
+        return self._orientation_base
+    
+    @orientation_base.setter
+    def orientation_base(self, orientation_base):
+        self._orientation_base = orientation_base
 
     def determine_poi(self, total_curve_length):
         for idx in range(len(self._curve.curve_y)):
             curve_length = self._curve.curve_length(idx)
             if abs(curve_length - self._percentage * total_curve_length) < 2:
-                return self._curve.curve_x[idx], self._curve.curve_y[idx]
+                return idx
     
-        return self._curve.curve_x[len(self._curve.curve_y) // 2], self._curve.curve_y[len(self._curve.curve_y) // 2]
+        return len(self._curve.curve_y)//2
 
 
-    def set_point_of_interaction(self):
-        curve_available = self._curve.fit_curve_to_mask(self._mask)
+    def set_point_of_interaction(self, fruit_xywh):
+        curve_available = self._curve.fit_curve_to_mask(self._mask, fruit_xywh, self._xywh)
 
         if not curve_available:
-            return (-1, -1)
+            return (-1, -1), (-1, -1)
         
         total_curve_length = self._curve.full_curve_length()
 
-        poi_x_px, poi_y_px = self.determine_poi(total_curve_length)
-        self._poi_px = (poi_x_px, poi_y_px)
+        idx = self.determine_poi(total_curve_length)
+        self._poi_px = (self._curve.curve_x[idx], self._curve.curve_y[idx])
 
-        return self._poi_px
+        next_idx = idx + 10 if idx + 10 < len(self._curve.curve_x) else len(self._curve.curve_x) - 1
+        self._next_point_px = (self._curve.curve_x[next_idx], self._curve.curve_y[next_idx])
+
+        return self._poi_px, self._next_point_px
 
 
 
@@ -222,13 +254,10 @@ class PepperFruit:
     def __init__(self, number:int, xywh=None, conf=0.0, segment=None, mask=None):
         self._number: int = number
 
-        self._xywh: Optional[List[float]] = xywh # TODO: change to xyxy
+        self._xywh: Optional[List[float]] = xywh # TODO: change to xyxy?
         self._conf: float = conf
         self._xyz_rs = None
         self._xyz_base = None
-        self._true_positive: bool = False
-        self._occurences: int = 1
-        self._parent_pepper: int = None
         self._mask = mask
         self.segment = segment
 
@@ -267,30 +296,6 @@ class PepperFruit:
     @xyz_base.setter
     def xyz_base(self, xyz_base):
         self._xyz_base = xyz_base
-
-    @property
-    def true_positive(self):
-        return self._true_positive
-    
-    @true_positive.setter
-    def true_positive(self, true_positive):
-        self._true_positive = true_positive
-
-    @property
-    def occurences(self):
-        return self._occurences
-    
-    @occurences.setter
-    def occurences(self, occurences):
-        self._occurences = occurences
-
-    @property
-    def parent_pepper(self):
-        return self._parent_pepper
-    
-    @parent_pepper.setter
-    def parent_pepper(self, parent_pepper):
-        self._parent_pepper = parent_pepper
 
     @property
     def mask(self):

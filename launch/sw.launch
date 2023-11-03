@@ -1,12 +1,6 @@
 <launch>
 
-  <!-- Define basket drop position joint space pose parameters -->
-  <!-- <param name="/joint1_basket" value="-1.515"/>
-  <param name="/joint2_basket" value="0.0617"/>
-  <param name="/joint3_basket" value="-1.020"/>
-  <param name="/joint4_basket" value="-0.2411"/>
-  <param name="/joint5_basket" value="-0.6781"/>
-  <param name="/joint6_basket" value="0.1951"/> -->
+  <arg name="on_amiga" default="true"/>
 
   <!-- realsense -->
   <include file="$(find realsense2_camera)/launch/rs_aligned_depth.launch">
@@ -22,9 +16,6 @@
   <!-- planner node-->
   <node pkg="peter"  name="planner_node" type="planner_node.py"></node>
 
-  <!-- visual servo node-->
-  <!-- <node pkg="peter"  name="visual_servo_node" type="visual_servo_node.py"></node> -->
-
   <!-- ee node-->
   <!-- <node pkg="peter"  name="ee_node" type="ee_node.py"></node> -->
 
@@ -36,6 +27,9 @@
 
   <!-- pepper filter node -->
   <node pkg="peter"  name="pepper_filter_node" type="pepper_filter_node.py"></node>
+
+  <!-- static tf from world to link_base -->
+  <node pkg="tf2_ros" type="static_transform_publisher" name="rviz_tf" args="0 0 0 1 0 0 0  world link_base" if="$(arg on_amiga)"/>
 
 
 </launch>

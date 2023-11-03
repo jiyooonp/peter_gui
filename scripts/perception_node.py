@@ -84,7 +84,7 @@ class PerceptionNode:
 
         self.xarm_moving_sub = rospy.Subscriber('/xarm_moving', Bool, self.xarm_moving_callback, queue_size=1)
 
-        _ = rospy.Subscriber('/user_selected_poi', Point, self.user_input_callback, queue_size=1)
+        # _ = rospy.Subscriber('/user_selected_poi', Point, self.user_input_callback, queue_size=1)
 
         # TODO set to (0, 0, 0)
         self.poi = Point()
@@ -113,8 +113,8 @@ class PerceptionNode:
         self.xarm_moving = False
 
         # user input
-        self.user_input_mode = True
-        self.user_selected_poi = (-1, -1)
+        # self.user_input_mode = True
+        # self.user_selected_poi = (-1, -1)
         
         
     def img_depth_callback(self, img, depth_img):
@@ -128,8 +128,8 @@ class PerceptionNode:
         except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
             print("Error getting the transform")
         
-    def user_input_callback(self, msg):
-        self.user_selected_poi = (msg.x, msg.y)
+    # def user_input_callback(self, msg):
+    #     self.user_selected_poi = (msg.x, msg.y)
 
     def detect_peppers(self, img, depth, transformation):
 
@@ -286,10 +286,10 @@ class PerceptionNode:
     
 
     def peduncle_pose(self, peduncle, pepper_depth, depth_img, transformation):
-        if self.user_input_mode:
-            x, y = self.user_selected_poi
-        else:
-            x, y = peduncle.set_point_of_interaction()
+        # if self.user_input_mode:
+        #     x, y = self.user_selected_poi
+        # else:
+        x, y = peduncle.set_point_of_interaction()
 
         if x == -1 and y == -1:
             return None, None

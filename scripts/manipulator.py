@@ -60,17 +60,17 @@ class Manipulator:
         print("Executing cartesian move")
         self.arm.set_position(*current_pos, wait=True, speed=10)
 
-    def moveToPregrasp(self,x,y,z):
-        """move to the poi pregrasp pose"""
-        x -= self.pregrasp_offset
-        x -= self.ee_length_offset
-        self.arm.set_position(x * 1000 ,y * 1000 ,z * 1000 ,*self.orientation, wait=True, speed=25)
+    # def moveToPregrasp(self,x,y,z):
+    #     """move to the poi pregrasp pose"""
+    #     x -= self.pregrasp_offset
+    #     x -= self.ee_length_offset
+    #     self.arm.set_position(x * 1000 ,y * 1000 ,z * 1000 ,*self.orientation, wait=True, speed=25)
 
     def moveToPregrasp(self,poi_pose):
         # get the position and orientation
         x = poi_pose.position.x
-        y = poi_pose.position.x
-        z = poi_pose.position.x
+        y = poi_pose.position.y
+        z = poi_pose.position.z
         quat = poi_pose.orientation
 
         # add x offsets
@@ -87,17 +87,20 @@ class Manipulator:
 
         # calculate the roll angle
         theta = math.atan2(y_comp, z_comp)
-        self.orientation[0] = math.pi - theta
+        # self.orientation[0] = 2*math.pi - theta
 
         # move to new position
-        self.arm.set_position(x * 1000 ,y * 1000 ,z * 1000 ,*self.orientation[0:], wait=True, speed=25)
+        self.arm.set_position(x * 1000 ,y * 1000 ,z * 1000 ,*self.orientation, wait=True, speed=25)
+        self.orientation[1] += (math.pi - theta) * (180/math.pi)
+        self.arm.set_position(x * 1000 ,y * 1000 ,z * 1000 ,*self.orientation, wait=True, speed=25)
+
 
     def moveToPoi(self):
         self.cartesianMove(self.pregrasp_offset,0) # move forward in x
 
     def orientParallel(self):
         current_pos = self.arm.get_position()[1]
-        self.arm.set_position(*current_pos[0:3] ,*self.orientation[0:], wait=True, speed=25)
+        self.arm.set_position(*current_pos[0:3] ,*self.orientation, wait=True, speed=25)
 
     def moveToBasket(self):
         """move to basket pose for pepper drop off"""
@@ -121,18 +124,17 @@ class Manipulator:
 
     def test(self):
         print("TESTING")
-        print(self.arm.get_position()[1])
-
+        current_pose = self.arm.get_position()[1]
         # move to init and multiframe
         # self.moveToInit()
         # self.multiframe()
 
         # pepper drop off and reset
-        self.moveToBasket()
-        rospy.sleep(10)
-        self.moveFromBasket()
-        rospy.sleep(10)
-        self.moveToInit()
+        # self.moveToBasket()
+        # rospy.sleep(10)
+        # self.moveFromBasket()
+        # rospy.sleep(10)
+        # self.moveToInit()
 
         # self.moveToInit()
         return

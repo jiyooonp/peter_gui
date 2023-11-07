@@ -62,7 +62,7 @@ class Manipulator:
         """move to the poi pregrasp pose"""
         x -= self.pregrasp_offset
         x -= self.ee_length_offset
-        self.arm.set_position(x * 1000 ,y * 1000 ,z * 1000 ,*self.orientation[3:], wait=True, speed=25)
+        self.arm.set_position(x * 1000 ,y * 1000 ,z * 1000 ,*self.orientation, wait=True, speed=25)
 
     def moveToPoi(self):
         self.cartesianMove(self.pregrasp_offset,0) # move forward in x

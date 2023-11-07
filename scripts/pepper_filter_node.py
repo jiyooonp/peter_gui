@@ -2,12 +2,13 @@
 
 import rospy
 from visualization_msgs.msg import Marker
-from geometry_msgs.msg import Point
+from geometry_msgs.msg import Pose, Point, Quaternion, PoseArray
 import tf2_ros
 from std_msgs.msg import Int16
 
 from filterpy.kalman import KalmanFilter
 from scipy.linalg import norm
+from scipy.spatial.transform import Rotation as R
 import time
 import numpy as np
 import matplotlib.pyplot as plt
@@ -42,23 +43,22 @@ class PepperFilterNode:
         self.clusters = []
         
         # subs
-        self.pepper_base_sub = rospy.Subscriber("/visualization_peduncle_marker_base", Marker, self.pep_callback, queue_size=1)
+        self.pepper_base_sub = rospy.Subscriber("/visualization_peduncle_poses_base", PoseArray, self.pep_callback, queue_size=1)
         
         # filtered poi publisher
-        self.poi_pub = rospy.Publisher('/poi', Point, queue_size=1)
-        
+        self.poi_pub = rospy.Publisher('/poi', Pose, queue_size=1)
         self.poi_viz = rospy.Publisher("/poi_viz", Marker, queue_size=1)
 
     def pep_callback(self, data):
         
-        potential_peps = data.points
+        potential_peps = data.poses
         
         for pep in potential_peps:
             
-            if pep.x == pep.y == pep.z == 0:
+            if pep.position.x == pep.position.y == pep.position.z == 0:
                 break
             
-            new_cluster = Cluster(pep.x, pep.y, pep.z, len(self.clusters) + 1)
+            new_cluster = Cluster(pep.position, pep.orientation, len(self.clusters) + 1)
             # see if pepper belongs to a pre-existing cluster
             
             if not self.clusters:
@@ -69,7 +69,7 @@ class PepperFilterNode:
             min_ind, min_dist = min(dists, key=lambda d: d[1])
             
             if min_dist < NEAREST_NEIGHBOR_METRIC:
-                self.clusters[min_ind].filter(new_cluster.center)               
+                self.clusters[min_ind].filter(new_cluster.center, new_cluster.quat)               
             # if it doesn't, make a new cluster
             else:
                 self.clusters.append(new_cluster)
@@ -93,20 +93,23 @@ class PepperFilterNode:
     def run(self):
         if self.clusters:
             
-            poi = Point(
-                self.clusters[0].x, 
-                self.clusters[0].y, 
-                self.clusters[0].z
-                )
+            poi_pose = self.clusters[0].get_pose_object()
+
+            poi_marker = Marker()
+            poi_marker.type = 0
+            poi_marker.header.frame_id = "link_base"
+            poi_marker.pose = poi_pose
+            poi_marker.color.r = 0
+            poi_marker.color.g = 1
+            poi_marker.color.b = 1
+            poi_marker.color.a = 1
+            poi_marker.scale.x = 0.08
+            poi_marker.scale.y = 0.008
+            poi_marker.scale.z = 0.008
             
-            poi_marker = self.make_marker(
-                self.clusters[0].x, 
-                self.clusters[0].y, 
-                self.clusters[0].z
-            )
-            
-            self.poi_pub.publish(poi)
+            self.poi_pub.publish(poi_pose)
             self.poi_viz.publish(poi_marker)
+    
             
     def make_marker(self, x, y, z, marker_type=2, frame_id='link_base', 
                     r= 1, g=0, b=0, a=1, scale=0.025):
@@ -130,7 +133,7 @@ class PepperFilterNode:
 
         return marker
         
-    def visualize(self):
+    def static_visualize(self):
         
         x = [p.x for p in self.clusters]
         y = [p.y for p in self.clusters]
@@ -166,11 +169,12 @@ class PepperFilterNode:
     
 class Cluster:
     
-    def __init__(self, x, y, z, id):
+    def __init__(self, position, orientation, id):
         
         # define the cluster center
-        self.x, self.y, self.z = x, y, z
-        self.center = np.array([x, y, z])
+        self.center = np.array([position.x, position.y, position.z])
+        self.quat = np.array([orientation.x, orientation.y, orientation.z, orientation.w])
+        self.vec = self.quat_to_vec(self.quat)
         
         self.tfBuffer = tf2_ros.Buffer()
         self.listener = tf2_ros.TransformListener(self.tfBuffer)
@@ -185,22 +189,27 @@ class Cluster:
         self.last_ob_time = self.birth
         
         # make a filter for the cluster
-        self.kf = KalmanFilter(dim_x=3, dim_z=3)
-        self.kf.x = self.center
-        self.kf.F = np.eye(3)  # State transition matrix set to identity
-        self.kf.H = np.eye(3)  # Measurement matrix
+        self.kf = KalmanFilter(dim_x=7, dim_z=7)
+        self.kf.x = np.reshape(np.concatenate([self.center, self.quat]), newshape=(-1, 1))
+        self.kf.F = np.eye(7)  # State transition matrix set to identity
+        self.kf.H = np.eye(7)  # Measurement matrix
         self.kf.P *= 1e-4  # Initial uncertainty
         
         # self.kf.R = 0.01 * np.eye(3)  # Measurement noise #TODO Tune
         
         # take a bunch of observations from live data
         # Note: This cov was taken from actual cluster covariance
-        self.kf.R = np.array(
+        
+        cov = np.zeros(shape=(7, 7))
+        cov[:3, :3] = np.array(
                     [[2.49044789e-06, 1.73915322e-07, 4.48913473e-07],
                      [1.73915322e-07, 2.42423576e-06, 1.17792215e-06],
                      [4.48913473e-07, 1.17792215e-06, 1.12009796e-05]])
+        cov[3:, 3:] = np.eye(4)
         
-        self.kf.Q = np.zeros((3, 3))  # Process noise set to zero
+        self.kf.R = cov
+        
+        self.kf.Q = np.zeros((7, 7))  # Process noise set to zero
         
         self.id = id
         
@@ -211,6 +220,35 @@ class Cluster:
         
     def dist(self, cluster):
         return norm(self.center - cluster.center)
+    
+    def quat_to_vec(self, quat):
+        
+        quat_ = R.from_quat(quat)
+        rot = quat_.as_matrix()
+        
+        # project take y component 
+        return np.array([0, rot[0, 1], rot[0, 2]])
+    
+    def vec_to_quat(self, vec):
+        
+        cross_vector = np.zeros(3)
+        if np.array_equal(vec, np.array([0, 0, 1])):
+            cross_vector = np.array([0, 1, 0])  
+        else: 
+            cross_vector = np.array([0, 0, 1])
+
+
+        cross1 = np.cross(np.squeeze(vec), cross_vector)
+        cross2 = np.cross(np.squeeze(vec), cross1)
+        # rospy.logwarn(f"{np.squeeze(vec).shape} | {cross1.shape} | {cross2.shape}")
+
+        rotation = np.vstack([np.squeeze(vec), cross1, cross2]).T
+
+        r = R.from_matrix(rotation)
+        quat = r.as_quat()
+
+        return quat
+        
     
     def calc_dist_from_ee(self):
         
@@ -235,7 +273,9 @@ class Cluster:
     def time_since_last_ob(self):
         return time.time() - self.last_ob_time
     
-    def filter(self, measurement):
+    def filter(self, center, orient):
+
+        measurement = np.concatenate([center, orient])
         
         self.observations += 1
         self.last_ob_time = time.time()
@@ -243,7 +283,10 @@ class Cluster:
         self.kf.predict()
         self.kf.update(measurement)
         
-        self.center = self.kf.x
+        self.center = self.kf.x[:3]
+        self.quat = self.kf.x[3:]
+        # self.quat = self.vec_to_quat(self.vec)
+
     
     def cleanup(self):
         
@@ -254,7 +297,15 @@ class Cluster:
             return True
         
         
-    
+    def get_pose_object(self):
+        
+        pose = Pose()
+        pose.position = Point(*self.center)
+        
+        # quat = self.vec_to_quat(self.vec)
+        pose.orientation = Quaternion(*self.quat)
+        
+        return pose
         
         
 

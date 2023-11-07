@@ -11,19 +11,18 @@ from numpy.linalg import norm
 
 """
 ---- Possible states -----
---Manual--
+--Manual States--
 idle: 0
 teleop: 1
-visual servo: 2
-return to init: 3
+move to init: 2
 
---Autonomous--
-move to init: 4
-multiframe: 5
-move to pregrasp: 6
-move to poi: 7
-harvest: 8
-move to basket: 9
+--Autonomous Sequence--
+move to init: 3
+multiframe: 4
+move to pregrasp: 5
+move to poi: 6
+harvest: 7
+move to basket: 8
 ERROR: 10
 
 """
@@ -35,43 +34,21 @@ class StateMachineNode:
 
         # --------- JOYSTICK -------------
         self.joy_state = Joy()
-        # subscribe to joystick message
         self.joystick_callback = rospy.Subscriber('/joy', Joy, self.joystick_callback, queue_size=1)
 
         # --------- STATE PUBLISHER INITIALIZATION -------------
         # create publisher that contiously publishes state at specified rate
         self.state_pub = rospy.Publisher('/state', Int16, queue_size=1)
-        self.state = 0 # initial state is 0 (idle)
+        self.state = 0 # initial state is 0 (idle / amiga teleoperation)
         
-        # --------- XARM SERVICE INITIALIZATION -------------
-        # make a service server to be able to change the arm state
-        self.xarm_mode_service = rospy.ServiceProxy("/xarm/set_mode", SetInt16)
-        self.xarm_state_service = rospy.ServiceProxy("/xarm/set_state", SetInt16)
-
         # --------- ROBOT SUBSYSTEM SUBSCRIBERS -------------
-        # subscribe to xarm joint state
         self.manipulator_state_sub = rospy.Subscriber('/xarm/jointState', JointState, self.manipulator_state_callback, queue_size=1)
-        # subscribe to perception node
-        self.perception_state_sub = rospy.Subscriber('/perception_state', Int16, self.perception_state_callback, queue_size=1)
-        # subscribe to planner node
         self.planner_state_sub = rospy.Subscriber('/planner_state', Int16, self.planner_state_callback, queue_size=1)
 
         # --------- ROBOT SUBSYSTEM VARIABLES -------------
-        self.joint_velocity = None
         self.manipulator_moving = None
         self.zero_vel_threshold = 1e-3
-        self.perception_state = None
-        self.planner_state = None
         self.plan_executed = None
-
-    # TODO: Incorperate perception feedback
-    # --------- PERCEPTION STATE CALLBACK ------------- #
-    # subscribe to topic with image detections
-
-    # subscribe to topic with depth info 
-    def perception_state_callback(self, data):
-        """Callback for perception state message"""
-        self.perception_state = data.data
 
     # --------- PLANNER STATE CALLBACK -------------
     def planner_state_callback(self, data):
@@ -102,70 +79,40 @@ class StateMachineNode:
         Assumptions:
         - Only one button is pressed at a time
         '''
-
+        # teleop mode
         if self.joy_state[6] and self.state != 1:
             self.state = 1
-            rospy.loginfo("Enter Manual Mode")
+            rospy.loginfo("Enter Teleop Mode")
 
-        # xbox button -> vs mode
-        elif self.joy_state[8] and self.state != 2: 
-            self.state = 4
-            rospy.loginfo("Initializing via State 4")
+        # xbox button -> autonomous sequence
+        elif self.joy_state[8] and self.state != 3: 
+            self.state = 3
+            rospy.loginfo("Enter Autonomous Sequence")
             
         # Y -> enter idle mode
         elif self.joy_state[3] and self.state != 0:
             self.state = 0
-            rospy.loginfo("Enter Idle Mode")                
+            rospy.loginfo("Enter Idle Mode")
         
 
     # --------- DECIDE STATE -------------
     def decide_state(self):
-         # idle - manual only 
-        if self.state == 0:
-            pass    # state decided by joystick callback
+         # idle - amiga teleop 
+        if self.state == 0 or self.state == 1 or self.state == 2:
+            pass
 
-        # teleop - manual only
-        elif self.state == 1:
-            pass    # state decided by joystick callback
-        
-        # visual servo - manual only
-        elif self.state == 2:
-            pass    # state decided by joystick callback
+        # once basket move is completed, go to state 0
+        elif self.state == 8 and self.plan_executed == self.state and not self.manipulator_moving:
+            self.state = 0
 
-        # return to init - manual only
-        elif self.state == 3:
-            pass    # state decided by joystick callback
-
-        # move to init pose
-        elif self.state == 4 and self.plan_executed == 4 and not self.manipulator_moving:
-            self.state = 5
-
-        # multiframe
-        elif self.state == 5 and self.plan_executed == 5 and not self.manipulator_moving:
-            self.state = 6
-    
-        # move to pregrasp
-        elif self.state == 6 and self.plan_executed == 6 and not self.manipulator_moving:
-            self.state = 7
-
-        # move to poi
-        elif self.state == 7 and self.plan_executed == 7 and not self.manipulator_moving:
-            self.state = 8
-
-        # harvest pepper
-        elif self.state == 8 and self.plan_executed == 8 and not self.manipulator_moving:
-            self.state = 9
-
-        # basket drop
-        elif self.state == 9 and self.plan_executed == 9 and not self.manipulator_moving:
-            # if more pepper seen in pepper detection topic
-                self.state = 4
-            # else:
-                rospy.loginfo_throttle_identical(10,"done with autonomous harvesting sequence")
+        # update state once plan is executed
+        elif self.plan_executed == self.state and not self.manipulator_moving:
+            self.state += 1
 
         else:
             rospy.loginfo_throttle_identical(1,"ERROR: UNRECOGNIZED STATE IN STATE MACHINE NODE")
             self.state == 10
+
 
     # --------- MAIN LOOP -------------
     def run(self):

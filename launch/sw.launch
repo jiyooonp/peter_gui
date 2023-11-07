@@ -17,7 +17,7 @@
   <node pkg="peter"  name="planner_node" type="planner_node.py"></node>
 
   <!-- ee node-->
-  <!-- <node pkg="peter"  name="ee_node" type="ee_node.py"></node> -->
+  <node pkg="peter"  name="ee_node" type="ee_node.py"></node>
 
   <!-- perception node-->
   <node pkg="peter"  name="perception_node" type="perception_node.py"></node>

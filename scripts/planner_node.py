@@ -58,7 +58,7 @@ class PlannerNode:
     def send_to_ee(self, command):
         """Send commands to open, harvest, or close for end-effector"""
 
-        # rospy.wait_for_service('/gripper_service')
+        rospy.wait_for_service('/gripper_service')
         if command == "open":
             try:
                 Pegasus_action = rospy.ServiceProxy('/gripper_service',Pegasus)
@@ -103,10 +103,10 @@ class PlannerNode:
                 xarm.disconnect()
                 rospy.sleep(.1)
                 self.send_to_ee("open")
-                rospy.loginfo("Plan Execution: Initalization Complete")
-                self.planner_state_pub.publish(self.state)
+                rospy.logwarn("Plan Execution: Initalization Complete")
+                self.planner_state_pub.publish(3)
             except:
-                rospy.loginfo("ERROR: UNABLE TO INITIALIZE AUTONOMOUS PROCEDURE")
+                rospy.logwarn("ERROR: UNABLE TO INITIALIZE AUTONOMOUS PROCEDURE")
                 self.state_pub.publish(10)
     
         # multiframe
@@ -117,10 +117,10 @@ class PlannerNode:
                 rospy.sleep(.1)
                 xarm.disconnect()
                 rospy.sleep(.1)
-                rospy.loginfo("Plan Execution: Multiframe Complete")
+                rospy.logwarn("Plan Execution: Multiframe Complete")
                 self.planner_state_pub.publish(self.state)
             except:
-                rospy.loginfo("ERROR: UNABLE TO MULTIFRAME")
+                rospy.logwarn("ERROR: UNABLE TO MULTIFRAME")
                 self.state_pub.publish(10)
             
         # move to pre-grasp
@@ -141,17 +141,17 @@ class PlannerNode:
                 self.state_pub.publish(10)
 
         # move to poi
-        elif self.state == 7:
+        elif self.state == 6:
             try:
                 xarm = Manipulator()
                 xarm.moveToPoi()
                 rospy.sleep(.1)
                 xarm.disconnect()
                 rospy.sleep(.1)
-                rospy.loginfo("Plan Execution: Move to POI Complete")
+                rospy.logwarn("Plan Execution: Move to POI Complete")
                 self.planner_state_pub.publish(self.state)
             except:
-                rospy.loginfo("ERROR: UNABLE TO MOVE TO POI")
+                rospy.logwarn("ERROR: UNABLE TO MOVE TO POI")
                 self.state_pub.publish(10)
 
         # harvest pepper
@@ -165,25 +165,25 @@ class PlannerNode:
                 rospy.sleep(.1)
                 xarm = Manipulator()
                 xarm.moveToBasket()
-                rospy.sleep(1)
+                rospy.sleep(3)
                 xarm.disconnect()
                 rospy.sleep(.1)
-                rospy.loginfo("Plan Execution: Move to Basket Complete")
+                rospy.logwarn("Plan Execution: Move to Basket Complete")
                 self.send_to_ee("open")
                 rospy.sleep(.1)
                 xarm = Manipulator()
                 xarm.moveFromBasket()
-                rospy.sleep(1)
-                rospy.loginfo("Plan Execution: Move from Basket Complete")
+                rospy.sleep(3)
+                rospy.logwarn("Plan Execution: Move from Basket Complete")
                 xarm.disconnect()
                 rospy.sleep(.1)
                 self.planner_state_pub.publish(self.state)
             except:
-                rospy.loginfo("ERROR: UNABLE TO MOVE TO BASKET")
+                rospy.logwarn("ERROR: UNABLE TO MOVE TO BASKET")
                 self.state_pub.publish(10)
 
         else:
-            rospy.loginfo("ERROR: UNRECOGNIZED STATE IN PLANNER NODE")
+            rospy.logwarn("ERROR: UNRECOGNIZED STATE IN PLANNER NODE")
             self.state_pub.publish(10)
             
         # dispay pregrasp visualization

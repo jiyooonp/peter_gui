@@ -51,10 +51,10 @@ class PerceptionNode:
             package_path+'/weights/levelb_2.pt')
         
         # Make marker for visualization
-        self.peduncle_marker_rs =  self.make_marker(frame_id="camera_color_optical_frame")
-        self.peduncle_marker_base =  self.make_marker(marker_type=8, frame_id='link_base', r= 1, g=0, b=1, a=1, x=0.02, y=0.01)
-        self.fruit_marker_rs =  self.make_marker(marker_type=8, frame_id='camera_color_optical_frame', r= 1, g=0, b=0, a=1, x=0.05, y=0.05)
-        self.fruit_marker_base =  self.make_marker(marker_type=8, frame_id='link_base', r= 0, g=1, b=0, a=1, x=0.06, y=0.06)
+        self.peduncle_marker_rs = make_marker(frame_id="camera_color_optical_frame")
+        self.peduncle_marker_base = make_marker(marker_type=8, frame_id='link_base', r= 1, g=0, b=1, a=1, x=0.02, y=0.01)
+        self.fruit_marker_rs = make_marker(marker_type=8, frame_id='camera_color_optical_frame', r= 1, g=0, b=0, a=1, x=0.05, y=0.05)
+        self.fruit_marker_base = make_marker(marker_type=8, frame_id='link_base', r= 0, g=1, b=0, a=1, x=0.06, y=0.06)
 
         self.peduncle_poses_base = PoseArray()
         self.peduncle_poses_base.header.frame_id = 'link_base'

@@ -57,7 +57,7 @@ class PepperFilterNode:
         
         potential_peps = data.poses
         val = 0
-        rospy.logwarn(f"len of data {len(potential_peps)}")
+        # rospy.logwarn(f"len of data {len(potential_peps)}")
         for pep in potential_peps:
             val += 1
             if pep.position.x == pep.position.y == pep.position.z == 0:

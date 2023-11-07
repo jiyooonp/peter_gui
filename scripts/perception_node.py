@@ -205,12 +205,12 @@ class PerceptionNode:
                 xywh = result.boxes.xywh[i].cpu().numpy()
                 xywh[0], xywh[1] = int(xywh[1]), int(xywh[0])   # Switch from YOLO axes to NumPy axes
                 
-                if cls == peduncle_number:                                    # it is a pepper
+                if cls == peduncle_number:                                    # it is a peduncle
                     peduncle_detection = PepperPeduncle(self.peduncle_count, xywh=xywh, mask=np.array(mask.cpu()), segment=segment)
                     self.peduncle_detections[self.peduncle_count] = peduncle_detection
                     self.peduncle_count += 1
 
-                else:                                           # it is a peduncle
+                else:                                           # it is a pepper
                     pepper_detection = PepperFruit(self.fruit_count, xywh=xywh, mask=np.array(mask.cpu()), segment=segment)
                     self.fruit_detections[self.fruit_count] = pepper_detection
                     self.fruit_count+= 1

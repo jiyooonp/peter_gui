@@ -12,68 +12,23 @@ from visualization_msgs.msg import Marker
 import message_filters
 
 import cv2
-import torch
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image as PILImage
+from ultralytics import YOLO
 
-import message_filters
 
 import tf2_ros
 from tf.transformations import quaternion_matrix
 
-from ultralytics import YOLO
 
 import os
 import io
-import random
 
 from pepper_util import PepperPeduncle, PepperFruit, Pepper
 from match_peppers_util import match_pepper_fruit_peduncle
-
-import matplotlib.pyplot as plt
-
-def plot_3d_points(points1, points2, img, filename):
-    # Create a new figure
-    fig = plt.figure(figsize=(10, 5))  # Adjust the figure size as needed
-
-    # Add subplot for the image
-    ax1 = fig.add_subplot(1, 2, 1)
-    ax1.imshow(img)
-    ax1.axis('off')  # Turn off axis numbers and ticks
-
-    # Add subplot for 3D scatter plot
-    ax2 = fig.add_subplot(1, 2, 2, projection='3d')
-    
-    # Unpack the first set of points into x1, y1, and z1 lists
-    x1, y1, z1 = zip(*points1)
-    ax2.scatter(z1, x1, y1, color='blue', label='pepper', alpha=0.2, s = 1)
-    
-    # Unpack the second set of points into x2, y2, and z2 lists
-    x2, y2, z2 = zip(*points2)
-    ax2.scatter(z2, x2, y2, color='red', label='peduncle', alpha=0.2, s = 1)
-    
-    ax2.set_xlabel('depth (m)')
-    ax2.set_ylabel('x (m)')
-    ax2.set_zlabel('y (m)')
-
-    # Set fixed axis limits and invert the necessary axes
-    ax2.set_xlim(5, 0)  # x-axis (depth) from 5 to 0 meters (reversed)
-    ax2.set_ylim(-1, 1)  # y-axis from -1 to 1
-    ax2.set_zlim(1, 0)  # z-axis from 1 to 0 (reversed)
-    
-    # Add a legend to differentiate the two point sets
-    ax2.legend()
-
-    # Adjust layout
-    plt.tight_layout()
-
-    # Save the combined plot to a file
-    plt.savefig(filename)
-
-    # Close the plot to free up memory
-    plt.close(fig)
+from perception_util import *
 
 class PerceptionNode:
 
@@ -92,15 +47,15 @@ class PerceptionNode:
 
         # Define the YOLO model
         self.yolo = YOLO(
-            package_path+'/weights/levelb_2.pt')
+            package_path+'/weights/red.pt')
         
         # Make marker for visualization
-        self.peduncle_marker_rs =  self.make_marker(frame_id="camera_color_optical_frame")
-        self.peduncle_marker_base =  self.make_marker(marker_type=8, frame_id='link_base', r= 1, g=0, b=1, a=1, x=0.02, y=0.01)
-        self.fruit_marker_rs =  self.make_marker(marker_type=8, frame_id='camera_color_optical_frame', r= 1, g=0, b=0, a=1, x=0.05, y=0.05)
-        self.fruit_marker_base =  self.make_marker(marker_type=8, frame_id='link_base', r= 0, g=1, b=0, a=1, x=0.06, y=0.06)
+        self.peduncle_marker_rs =  make_marker(frame_id="camera_color_optical_frame")
+        self.peduncle_marker_base =  make_marker(frame_id='link_base', r= 1, g=0, b=1, a=1, x=0.02, y=0.01)
+        self.fruit_marker_rs =  make_marker( frame_id='camera_color_optical_frame', r= 1, g=0, b=0, a=1, x=0.05, y=0.05)
+        self.fruit_marker_base =  make_marker(frame_id='link_base', r= 0, g=1, b=0, a=1, x=0.06, y=0.06)
 
-        self.peduncle_mask_rs = self.make_marker(marker_type=8, frame_id='camera_color_optical_frame', r= 1, g=0, b=0, a=1, x=0.02, y=0.02)
+        self.peduncle_mask_rs = make_marker(frame_id='camera_color_optical_frame', r= 1, g=0, b=0, a=1, x=0.02, y=0.02)
 
         self.tfBuffer = tf2_ros.Buffer()
         self.listener = tf2_ros.TransformListener(self.tfBuffer)
@@ -112,14 +67,10 @@ class PerceptionNode:
         self.fruit_marker_rs_pub = rospy.Publisher("/visualization_pepper_marker_rs", Marker, queue_size=1)
         self.fruit_marker_base_pub = rospy.Publisher("/visualization_pepper_marker_base", Marker, queue_size=1)
 
-        self.peduncle_mask_pub = rospy.Publisher("/visualization_peduncle_mask", Marker, queue_size=1)
-
         self.image_pub = rospy.Publisher('/pepper_yolo_results', Image, queue_size=1)
         self.pepper_center_pub = rospy.Publisher('/pepper_center', Point, queue_size=1)
         self.peduncle_center_pub = rospy.Publisher('/peduncle_center', Point, queue_size=1)
         self.poi_pub = rospy.Publisher('/poi', Point, queue_size=1)
-
-        self.poi_publisher = rospy.Publisher('/perception/peduncle/poi', Pose, queue_size=10)
 
         # Subscribers
         self.camera_info_sub = rospy.Subscriber("/camera/color/camera_info", CameraInfo, self.camera_info_callback)
@@ -133,6 +84,8 @@ class PerceptionNode:
 
         self.xarm_moving_sub = rospy.Subscriber('/xarm_moving', Bool, self.xarm_moving_callback, queue_size=1)
 
+        # _ = rospy.Subscriber('/user_selected_poi', Point, self.user_input_callback, queue_size=1)
+
         # TODO set to (0, 0, 0)
         self.poi = Point()
         self.state = None
@@ -141,14 +94,12 @@ class PerceptionNode:
 
         self.pepper_center = None
         self.peduncle_center = None
-        # self.depth_image = None
 
-        self.peduncle_offset = 0.0       
-        
         # store the results of YOLO
         self.fruit_count = 0
         self.peduncle_count = 0
         self.pepper_count = 0
+
         self.fruit_detections = dict()
         self.peduncle_detections = dict()
         self.pepper_detections = dict()
@@ -156,11 +107,14 @@ class PerceptionNode:
 
         # visualization
         self.image_count = 0
-        # self.image = np.zeros((480, 640, 3), dtype=np.uint8)
         self.vis_pepper_list = []
         self.vis_peduncle_list = []
 
         self.xarm_moving = False
+
+        # user input
+        # self.user_input_mode = True
+        # self.user_selected_poi = (-1, -1)
         
         
     def img_depth_callback(self, img, depth_img):
@@ -174,7 +128,8 @@ class PerceptionNode:
         except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
             print("Error getting the transform")
         
-        
+    # def user_input_callback(self, msg):
+    #     self.user_selected_poi = (msg.x, msg.y)
 
     def detect_peppers(self, img, depth, transformation):
 
@@ -205,16 +160,14 @@ class PerceptionNode:
                 self.calculate_pepper_poses(depth_img, transformation)
                 self.publish_visualization_markers()
                 self.choose_pepper()
-                # self.plot_masks(image, depth_img)
 
-                self.fruit_count = 0
-                self.peduncle_count = 0
+                self.fruit_count, self.peduncle_count = 0, 0
                 self.fruit_detections = dict()
                 self.peduncle_detections = dict()
 
                 if self.pepper_detections != dict():
                     for i, pepper in self.pepper_detections.items():
-                        rand_color = self.random_color()
+                        rand_color = random_color()
                         image = self.visualize_result(image, pepper.pepper_fruit.segment, poi=None, color=rand_color)
                         image = self.visualize_result(image, pepper.pepper_peduncle.segment, poi=pepper.pepper_peduncle.poi_px, color=rand_color)
 
@@ -235,15 +188,15 @@ class PerceptionNode:
     
     def xarm_moving_callback(self, msg):
         self.xarm_moving = msg.data
-        print(self.xarm_moving) 
+        # print(self.xarm_moving) 
  
     def run_yolo(self, image):
 
         results_both = self.yolo(image, verbose=False)
         result = results_both[0]                                # only take the first image because there is only one image
-
-        if len(result.boxes) != 0:                              # if there is a detection
-
+        # print("names:", result.names)
+        peduncle_number = next((key for key, value in result.names.items() if 'peduncle' in value), None)
+        if len(result.boxes) != 0:  # if there is a detection
             for i in range(len(result.masks)):                  # for each mask
                 segment = result.masks.xyn[i]                   # only boundary of mask
                 mask = result.masks.data[i]                     # mask with 1s and 0s
@@ -252,25 +205,22 @@ class PerceptionNode:
                 xywh = result.boxes.xywh[i].cpu().numpy()
                 xywh[0], xywh[1] = int(xywh[1]), int(xywh[0])   # Switch from YOLO axes to NumPy axes
                 
-                if cls == 0:                                    # it is a pepper
-                    pepper_detection = PepperFruit(self.fruit_count, xywh=xywh, mask=np.array(mask.cpu()), segment=segment)
-                    self.fruit_detections[self.fruit_count] = pepper_detection
-                    self.fruit_count+= 1
-
-                else:                                           # it is a peduncle
+                if cls == peduncle_number:                                    # it is a pepper
                     peduncle_detection = PepperPeduncle(self.peduncle_count, xywh=xywh, mask=np.array(mask.cpu()), segment=segment)
                     self.peduncle_detections[self.peduncle_count] = peduncle_detection
                     self.peduncle_count += 1
-                                        
-            self.image_count+=1
 
+                else:                                           # it is a peduncle
+                    pepper_detection = PepperFruit(self.fruit_count, xywh=xywh, mask=np.array(mask.cpu()), segment=segment)
+                    self.fruit_detections[self.fruit_count] = pepper_detection
+                    self.fruit_count+= 1
+            self.image_count+=1
 
     def empty_visualization_markers(self):
         self.fruit_marker_rs.points = []
         self.fruit_marker_base.points = []
         self.peduncle_marker_rs.points = []
         self.peduncle_marker_base.points = []
-        
     
     def calculate_pepper_poses(self, depth_img, transformation):
         delete_keys = []
@@ -299,7 +249,6 @@ class PerceptionNode:
         for key in delete_keys:
             del self.pepper_detections[key]
 
-
     def publish_visualization_markers(self):
         if self.fruit_marker_rs.points == []:
             self.fruit_marker_rs.points.append(Point(0, 0, 0))
@@ -324,7 +273,7 @@ class PerceptionNode:
         x, y, w, h = fruit.xywh
         z = self.get_depth(depth_img, x, y)
 
-        if z == 0 or z > 3:                                                                 # TODO must test
+        if z == 0 or z > 3:  # TODO must test
             return None, None
 
         # X, Y, Z in RS frame
@@ -337,6 +286,9 @@ class PerceptionNode:
     
 
     def peduncle_pose(self, peduncle, pepper_depth, depth_img, transformation):
+        # if self.user_input_mode:
+        #     x, y = self.user_selected_poi
+        # else:
         x, y = peduncle.set_point_of_interaction()
 
         if x == -1 and y == -1:
@@ -397,9 +349,6 @@ class PerceptionNode:
                 # self.peduncle_mask_rs.points.append(Point(X, Y, Z))
                 self.vis_peduncle_list.append((X, Y, Z))
             
-            # self.peduncle_mask_pub.publish(self.peduncle_mask_rs)     # TODO remove if not used
-            # self.peduncle_mask_rs.points = []
-
         plot_3d_points(self.vis_pepper_list, self.vis_peduncle_list, image, "/root/catkin_ws/both"+str(self.image_count)+".png")
         self.vis_peduncle_list = []
         self.vis_pepper_list = []
@@ -408,8 +357,6 @@ class PerceptionNode:
     def get_depth(self, depth_img, x, y):
         x = int(x)
         y = int(y)
-        
-        # print(f"depth image: {type(depth)}")
         
         top_x = max(0, x - self.depth_window)
         bottom_x = min(self.img_height, x + self.depth_window)
@@ -471,26 +418,7 @@ class PerceptionNode:
         if poi is not None:
             image = cv2.circle(image, (int(poi[1]), int(poi[0])), 5, (0, 0, 255), -1)
         return image
-    
-    def make_marker(self, marker_type=8, frame_id='camera_color_optical_frame', r= 1, g=0, b=0, a=1, x=0.05, y=0.05):
-        marker = Marker()
-        marker.type = marker_type
-        marker.header.frame_id = frame_id
-        marker.color.r = r
-        marker.color.g = g
-        marker.color.b = b
-        marker.color.a = a
-        marker.scale.x = x
-        marker.scale.y = y
 
-        return marker
-    
-    def random_color(self):
-        r = random.randint(0, 255)
-        g = random.randint(0, 255)
-        b = random.randint(0, 255)
-        a = random.random()  # returns a float between 0 and 1
-        return (r, g, b, a)
 
 if __name__ == '__main__':
     try:

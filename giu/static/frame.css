@@ -1,0 +1,6 @@
+/* Sidebar styles */
+body {
+    display: flex;
+    flex-direction: row;
+    padding-top: 70px;
+}

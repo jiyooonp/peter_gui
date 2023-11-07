@@ -69,7 +69,7 @@ class PepperFilterNode:
             min_ind, min_dist = min(dists, key=lambda d: d[1])
             
             if min_dist < NEAREST_NEIGHBOR_METRIC:
-                self.clusters[min_ind].filter(new_cluster.center, new_cluster.vec)               
+                self.clusters[min_ind].filter(new_cluster.center, new_cluster.quat)               
             # if it doesn't, make a new cluster
             else:
                 self.clusters.append(new_cluster)
@@ -189,10 +189,10 @@ class Cluster:
         self.last_ob_time = self.birth
         
         # make a filter for the cluster
-        self.kf = KalmanFilter(dim_x=6, dim_z=6)
-        self.kf.x = np.reshape(np.concatenate([self.center, self.vec]), newshape=(-1, 1))
-        self.kf.F = np.eye(6)  # State transition matrix set to identity
-        self.kf.H = np.eye(6)  # Measurement matrix
+        self.kf = KalmanFilter(dim_x=7, dim_z=7)
+        self.kf.x = np.reshape(np.concatenate([self.center, self.quat]), newshape=(-1, 1))
+        self.kf.F = np.eye(7)  # State transition matrix set to identity
+        self.kf.H = np.eye(7)  # Measurement matrix
         self.kf.P *= 1e-4  # Initial uncertainty
         
         # self.kf.R = 0.01 * np.eye(3)  # Measurement noise #TODO Tune
@@ -200,16 +200,16 @@ class Cluster:
         # take a bunch of observations from live data
         # Note: This cov was taken from actual cluster covariance
         
-        cov = np.zeros(shape=(6, 6))
+        cov = np.zeros(shape=(7, 7))
         cov[:3, :3] = np.array(
                     [[2.49044789e-06, 1.73915322e-07, 4.48913473e-07],
                      [1.73915322e-07, 2.42423576e-06, 1.17792215e-06],
                      [4.48913473e-07, 1.17792215e-06, 1.12009796e-05]])
-        cov[3:, 3:] = np.eye(3)
+        cov[3:, 3:] = np.eye(4)
         
         self.kf.R = cov
         
-        self.kf.Q = np.zeros((6, 6))  # Process noise set to zero
+        self.kf.Q = np.zeros((7, 7))  # Process noise set to zero
         
         self.id = id
         
@@ -284,8 +284,8 @@ class Cluster:
         self.kf.update(measurement)
         
         self.center = self.kf.x[:3]
-        self.vec = self.kf.x[3:]
-        self.quat = self.vec_to_quat(self.vec)
+        self.quat = self.kf.x[3:]
+        # self.quat = self.vec_to_quat(self.vec)
 
     
     def cleanup(self):
@@ -302,8 +302,8 @@ class Cluster:
         pose = Pose()
         pose.position = Point(*self.center)
         
-        quat = self.vec_to_quat(self.vec)
-        pose.orientation = Quaternion(*quat)
+        # quat = self.vec_to_quat(self.vec)
+        pose.orientation = Quaternion(*self.quat)
         
         return pose
         

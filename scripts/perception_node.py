@@ -6,26 +6,17 @@ import cv_bridge
 
 from sensor_msgs.msg import Image, CameraInfo
 from std_msgs.msg import String, Int16, Bool
-from geometry_msgs.msg import Point, Pose, PoseArray, Quaternion
+from geometry_msgs.msg import Point,  PoseArray
 from visualization_msgs.msg import Marker
 
 import message_filters
 
 import cv2
-import matplotlib.patches as patches
-import matplotlib.pyplot as plt
 import numpy as np
-from PIL import Image as PILImage
 from ultralytics import YOLO
 
-
 import tf2_ros
-from tf.transformations import quaternion_matrix
 from scipy.spatial.transform import Rotation as R
-
-
-import os
-import io
 
 from pepper_util import PepperPeduncle, PepperFruit, Pepper
 from match_peppers_util import match_pepper_fruit_peduncle
@@ -34,6 +25,7 @@ from perception_util import *
 class PerceptionNode:
 
     def __init__(self):
+
 
         rospy.init_node('perception_node', anonymous=True)
         self.bridge = cv_bridge.CvBridge()
@@ -59,8 +51,6 @@ class PerceptionNode:
         self.peduncle_poses_base = PoseArray()
         self.peduncle_poses_base.header.frame_id = 'link_base'
 
-        self.peduncle_mask_rs = make_marker(frame_id='camera_color_optical_frame', r= 1, g=0, b=0, a=1, x=0.02, y=0.02)
-
         self.tfBuffer = tf2_ros.Buffer()
         self.listener = tf2_ros.TransformListener(self.tfBuffer)
 
@@ -74,11 +64,6 @@ class PerceptionNode:
         self.fruit_marker_base_pub = rospy.Publisher("/visualization_pepper_marker_base", Marker, queue_size=1)
 
         self.image_pub = rospy.Publisher('/pepper_yolo_results', Image, queue_size=1)
-        self.pepper_center_pub = rospy.Publisher('/pepper_center', Point, queue_size=1)
-        self.peduncle_center_pub = rospy.Publisher('/peduncle_center', Point, queue_size=1)
-        # self.poi_pub = rospy.Publisher('/poi', Point, queue_size=1)
-
-        self.poi_publisher = rospy.Publisher('/perception/peduncle/poi', Pose, queue_size=10)
 
         # Subscribers
         self.camera_info_sub = rospy.Subscriber("/camera/color/camera_info", CameraInfo, self.camera_info_callback)
@@ -88,20 +73,7 @@ class PerceptionNode:
         ts = message_filters.TimeSynchronizer([self.image_sub, self.depth_sub], queue_size=1)
         ts.registerCallback(self.img_depth_callback)
 
-        self.state_sub = rospy.Subscriber('/state', Int16, self.state_callback, queue_size=1)
-
-        self.xarm_moving_sub = rospy.Subscriber('/xarm_moving', Bool, self.xarm_moving_callback, queue_size=1)
-
         # _ = rospy.Subscriber('/user_selected_poi', Point, self.user_input_callback, queue_size=1)
-
-        # TODO set to (0, 0, 0)
-        self.poi = Point()
-        self.state = None
-        
-        # POI publisher
-
-        self.pepper_center = None
-        self.peduncle_center = None
 
         # store the results of YOLO
         self.fruit_count = 0
@@ -112,13 +84,8 @@ class PerceptionNode:
         self.peduncle_detections = dict()
         self.pepper_detections = dict()
 
-
         # visualization
         self.image_count = 0
-        self.vis_pepper_list = []
-        self.vis_peduncle_list = []
-
-        self.xarm_moving = False
 
         # user input
         # self.user_input_mode = True
@@ -136,8 +103,6 @@ class PerceptionNode:
         except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
             print("Error getting the transform")
         
-    # def user_input_callback(self, msg):
-    #     self.user_selected_poi = (msg.x, msg.y)
 
     def detect_peppers(self, img, depth, transformation):
 
@@ -167,8 +132,6 @@ class PerceptionNode:
                 self.empty_visualization_markers()
                 self.calculate_pepper_poses(depth_img, transformation)
                 self.publish_visualization_markers()
-                self.choose_pepper()
-                # self.plot_masks(image, depth_img)
 
                 self.fruit_count, self.peduncle_count = 0, 0
                 self.fruit_detections = dict()
@@ -195,17 +158,13 @@ class PerceptionNode:
             rospy.logerr("Error converting from image message: {}".format(e))
             return
     
-    def xarm_moving_callback(self, msg):
-        self.xarm_moving = msg.data
-        # print(self.xarm_moving) 
- 
     def run_yolo(self, image):
 
         results_both = self.yolo(image, verbose=False)
-        result = results_both[0]                                # only take the first image because there is only one image
-        # print("names:", result.names)
+        result = results_both[0]                       
+
         peduncle_number = next((key for key, value in result.names.items() if 'peduncle' in value), None)
-        if len(result.boxes) != 0:  # if there is a detection
+        if len(result.boxes) != 0:                              # if there is a detection
             for i in range(len(result.masks)):                  # for each mask
                 segment = result.masks.xyn[i]                   # only boundary of mask
                 mask = result.masks.data[i]                     # mask with 1s and 0s
@@ -231,8 +190,9 @@ class PerceptionNode:
         self.peduncle_marker_rs.points = []
         self.peduncle_marker_base.points = []
         self.peduncle_poses_base.poses = []
-        
     
+    # calculates the fruit/peduncle poses in the base frame
+    # output: self.fruit_marker_rs and self.fruit_marker_base etc
     def calculate_pepper_poses(self, depth_img, transformation):
         delete_keys = []
 
@@ -256,33 +216,10 @@ class PerceptionNode:
             self.fruit_marker_base.points.append(Point(fruit.xyz_base[0], fruit.xyz_base[1], fruit.xyz_base[2]))
             self.peduncle_marker_rs.points.append(Point(peduncle.xyz_rs[0], peduncle.xyz_rs[1], peduncle.xyz_rs[2]))
             self.peduncle_marker_base.points.append(Point(peduncle.xyz_base[0], peduncle.xyz_base[1], peduncle.xyz_base[2]))
-            self.peduncle_poses_base.poses.append(self.get_pose_object(peduncle.xyz_base, peduncle.orientation_base))
+            self.peduncle_poses_base.poses.append(get_pose_object(peduncle.xyz_base, peduncle.orientation_base))
 
         for key in delete_keys:
             del self.pepper_detections[key]
-
-    
-    def get_pose_object(self, position, orientation):
-        pose = Pose()
-        pose.position = Point(x=position[0], y=position[1], z=position[2])
-        orientation = np.array([orientation[0], orientation[1], orientation[2]])
-        orientation = orientation/np.linalg.norm(orientation)
-
-        if orientation[0] == 0 and orientation[1] == 0 and orientation[2] == 1:
-            cross_vector = np.array([0, 1, 0])  
-        else: 
-            cross_vector = np.array([0, 0, 1])
-
-        cross1 = np.cross(orientation, cross_vector)
-        cross2 = np.cross(orientation, cross1)
-        rotation = np.array([orientation, cross1, cross2]).T
-
-        r = R.from_matrix(rotation)
-        quat = r.as_quat()
-        pose.orientation = Quaternion(x=quat[0], y=quat[1], z=quat[2], w=quat[3])
-
-        return pose
-    
 
     def publish_visualization_markers(self):
         if self.fruit_marker_rs.points == []:
@@ -297,7 +234,7 @@ class PerceptionNode:
         if self.peduncle_marker_rs.points == []:
             self.peduncle_marker_rs.points.append(Point(0, 0, 0))
             self.peduncle_marker_base.points.append(Point(0, 0, 0))
-            self.peduncle_poses_base.poses.append(self.get_pose_object([0, 0, 0], [0, 0, 1]))
+            self.peduncle_poses_base.poses.append(get_pose_object([0, 0, 0], [0, 0, 1]))
 
         self.peduncle_marker_rs.header.stamp = rospy.Time.now()
         self.peduncle_marker_rs_pub.publish(self.peduncle_marker_rs)
@@ -306,7 +243,7 @@ class PerceptionNode:
         self.peduncle_poses_base.header.stamp = rospy.Time.now()
         self.peduncle_poses_base_pub.publish(self.peduncle_poses_base)
 
-    
+    # calculates the fruit center in the base_frame
     def fruit_pose(self, fruit, depth_img, transformation):
         x, y, w, h = fruit.xywh
         z = self.get_depth(depth_img, x, y)
@@ -318,13 +255,14 @@ class PerceptionNode:
         X_rs, Y_rs, Z_rs = self.get_3D_coords(x, y, z)
         
         # X, Y, Z in base frame
-        X_b, Y_b, Z_b = self.transform_to_base_frame(transformation, X_rs, Y_rs, Z_rs)
+        X_b, Y_b, Z_b = transform_to_base_frame(transformation, X_rs, Y_rs, Z_rs)
         
         return (X_rs, Y_rs, Z_rs), (X_b, Y_b, Z_b)
     
 
     def peduncle_pose(self, peduncle, fruit_xywh, fruit_depth, depth_img, transformation):
         poi_px, next_point_px = peduncle.set_point_of_interaction(fruit_xywh)
+        # TODO user input 
 
         x, y = poi_px
         x_next, y_next = next_point_px
@@ -340,62 +278,12 @@ class PerceptionNode:
         X_next_rs, Y_next_rs, Z_next_rs = self.get_3D_coords(x_next, y_next, z_next)
         
         # Base frame
-        X_b, Y_b, Z_b = self.transform_to_base_frame(transformation, X_rs, Y_rs, Z_rs)
-        X_next_b, Y_next_b, Z_next_b = self.transform_to_base_frame(transformation, X_next_rs, Y_next_rs, Z_next_rs)
+        X_b, Y_b, Z_b = transform_to_base_frame(transformation, X_rs, Y_rs, Z_rs)
+        X_next_b, Y_next_b, Z_next_b = transform_to_base_frame(transformation, X_next_rs, Y_next_rs, Z_next_rs)
         
         return (X_rs, Y_rs, Z_rs), (X_b, Y_b, Z_b), (X_next_b - X_b, Y_next_b - Y_b, Z_next_b - Z_b)
     
-
-    def choose_pepper(self):
-        # TODO improve with prioritization
-        for _, pepper in self.pepper_detections.items(): 
-            peduncle = pepper.pepper_peduncle
-
-            if self.state != 6: # TODO: update based on move to pregrasp state
-                self.poi.x = peduncle.xyz_base[0]
-                self.poi.y = peduncle.xyz_base[1]
-                self.poi.z = peduncle.xyz_base[2]
-
-            break
-
-        # self.poi_pub.publish(self.poi)
-    
-
-    def plot_masks(self, image, depth_img):
-        for _, pepper in self.pepper_detections.items():
-            fruit = pepper.pepper_fruit
-            peduncle = pepper.pepper_peduncle
-
-            x, y = np.where(fruit.mask == 1)
-
-            # print("there are {} points in the mask".format(len(x)))
-            xys = list(zip(x, y))
-            for x, y in xys:
-                z = depth_img[x, y] * 0.001
-                if z == 0:
-                    continue
-                X, Y, Z = self.get_3D_coords(x, y, z)
-                self.vis_pepper_list.append((X, Y, Z))
-
-            # visualize the peduncle mask in rviz 
-            x, y = np.where(peduncle.mask == 1)
-
-            # print("there are {} points in the mask".format(len(x)))
-            xys = list(zip(x, y))
-            for x, y in xys:
-                z = depth_img[x, y] * 0.001
-                if z == 0:
-                    continue
-                X, Y, Z = self.get_3D_coords(x, y, z)
-                # self.peduncle_mask_rs.points.append(Point(X, Y, Z))
-                self.vis_peduncle_list.append((X, Y, Z))
-            
-        plot_3d_points(self.vis_pepper_list, self.vis_peduncle_list, image, "/root/catkin_ws/both"+str(self.image_count)+".png")
-        self.vis_peduncle_list = []
-        self.vis_pepper_list = []
-
-            
-    def get_depth(self, depth_img, x, y):
+    def get_depth(self, depth_img, x, y): # TODO move to util?
         x = int(x)
         y = int(y)
         
@@ -413,7 +301,6 @@ class PerceptionNode:
 
         return depth
     
-
     def camera_info_callback(self, msg):
         # Store the camera matrix
         self.camera_matrix = np.array(msg.K, dtype=np.float64).reshape(3, 3)
@@ -434,25 +321,6 @@ class PerceptionNode:
         Y = (y - self.camera_matrix[1, 2]) * Z / self.camera_matrix[1, 1]
         return X, Y, Z
     
-    def transform_to_base_frame(self, transformation, X, Y, Z):
-        
-        # Get translation and rotation
-        trans, quat = transformation.transform.translation, transformation.transform.rotation
-
-        # Create homogeneous matrix
-        homo_matrix = np.asarray(quaternion_matrix([quat.x, quat.y, quat.z, quat.w]))
-        homo_matrix[:3, 3] = np.array([trans.x, trans.y, trans.z])
-
-        # Transform to base frame
-        point_camera_frame = np.array([X, Y, Z, 1])
-        point_base_frame = np.matmul(homo_matrix, point_camera_frame) 
-
-        return point_base_frame[0], point_base_frame[1], point_base_frame[2]
-        
-
-    def state_callback(self, msg):
-        self.state = msg.data
-
     def visualize_result(self, image, segment, poi=None, color=(100, 0, 125, 0.1)):
         mask_coords = (segment @ np.array([[self.img_width, 0], [0, self.img_height]])).astype(int)
         image = cv2.fillPoly(image, pts=[mask_coords], color=color)
@@ -460,10 +328,10 @@ class PerceptionNode:
             image = cv2.circle(image, (int(poi[1]), int(poi[0])), 5, (0, 0, 255), -1)
         return image
 
-
 if __name__ == '__main__':
     try:
         perception_node = PerceptionNode()
+        print("huh")
         rospy.spin()
     except rospy.ROSInterruptException:
         pass

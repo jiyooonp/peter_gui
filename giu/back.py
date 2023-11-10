@@ -13,6 +13,8 @@ import base64
 
 from flask import Flask, render_template, Response, request, jsonify
 from flask_socketio import SocketIO, emit
+import time
+from collections import defaultdict
 
 
 app = Flask(__name__)
@@ -26,6 +28,8 @@ image_data = None
 system_state = -1
 amiga_state = -1
 
+harvest_times = defaultdict()
+pepper_id = 1
 
 ros_publisher = rospy.Publisher('/user_selected_points', String, queue_size=10)
 
@@ -40,9 +44,32 @@ def image_callback(msg):
         rospy.logerr("Could not convert image: %s" % e)
 
 
+timer_start = time.time()
+elapsed_time = 0
+
 def system_state_callback(msg):
-    global system_state
+    global system_state, timer_start, elapsed_time, pepper_id
+
+    previous_state = system_state
     system_state = msg.data
+
+    # Start timer when state changes to 3
+    if system_state == 3 and previous_state != 3:
+        pepper_id += 1
+        timer_start = time.time()
+
+    # Stop timer and calculate elapsed time when state changes to 8
+    elif system_state == 8 and previous_state != 8 and timer_start is not None:
+        harvest_times[pepper_id] = time.time() - timer_start
+    if system_state < 3:
+        pass
+    else:
+        elapsed_time = time.time() - timer_start
+    
+        # timer_start = None
+    socketio.emit('timer_update', {'pepper_id': pepper_id, 'elapsed_time': elapsed_time})
+    # print("Sending timer update", elapsed_time)
+
     socketio.emit('system_state_update', {'state': system_state})
 
 
@@ -54,7 +81,7 @@ def amiga_state_callback(msg):
 
 def ros_thread():
     rospy.Subscriber('/camera/color/image_raw', Image, image_callback)
-    rospy.Subscriber('/system_state', Int16, system_state_callback)
+    rospy.Subscriber('/state', Int16, system_state_callback)
     rospy.Subscriber('/amiga_state', Int16, amiga_state_callback)
     rospy.spin()
 

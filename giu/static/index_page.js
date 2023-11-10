@@ -60,42 +60,10 @@ function updateStateMachine(state_len, state, prefix) {
 }
 
 // Timer functionality
-let timers = [];
 
-function startTimer(timerId) {
-    const timerElement = document.getElementById(`timer-${timerId}`);
-    let seconds = 0;
-    timers[timerId] = setInterval(() => {
-        seconds++;
-        timerElement.textContent = `Timer ${timerId}: ${new Date(seconds * 1000).toISOString().substr(11, 8)}`;
-    }, 1000);
-}
-
-
-function createTimer(timerId) {
-    const timerButton = document.createElement('button');
-    timerButton.className = 'timer-button';
-    timerButton.id = `timer-${timerId}`;
-    timerButton.textContent = `Timer ${timerId}: 00:00:00`;
-    let timerInterval;
-
-    timerButton.addEventListener('click', function () {
-        if (timerInterval) {
-            clearInterval(timerInterval);
-            timerInterval = null;
-        } else {
-            let seconds = 0;
-            timerInterval = setInterval(() => {
-                seconds++;
-                timerButton.textContent = `Timer ${timerId}: ${formatTime(seconds)}`;
-            }, 1000);
-        }
-    });
-
-    const timersContainer = document.getElementById('timers');
-    timersContainer.appendChild(timerButton);
-}
-
+let timers = {
+    timer1: { element: null, interval: null, seconds: 0 },
+};
 function formatTime(seconds) {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
@@ -107,14 +75,67 @@ function padZero(num) {
     return num.toString().padStart(2, '0');
 }
 
+
+function updateTimerDisplay(timerId) {
+    const timer = timers[timerId];
+    timer.element.textContent = `Timer ${timerId}: ${formatTime(timer.seconds)}`;
+}
+
+
+function startTimer(timerId) {
+    stopAllTimers(); // Optional: stop all other timers when one starts
+    const timer = timers[timerId];
+    timer.interval = setInterval(() => {
+        timer.seconds++;
+        updateTimerDisplay(timerId);
+    }, 1000);
+}
+
+function stopTimer(timerId) {
+    const timer = timers[timerId];
+    clearInterval(timer.interval);
+    timer.interval = null;
+}
+
+function stopAllTimers() {
+    Object.keys(timers).forEach(stopTimer);
+}
+function addNewTimer(timerId, pepperId) {
+    // Check if the timer already exists
+    if (!timers[timerId]) {
+        // Create a new timer object
+        timers[timerId] = { element: null, interval: null, seconds: 0 };
+
+        // Create the timer display element
+        const timerElement = document.createElement('div');
+        timerElement.id = `timer-${timerId}`;
+
+        // Add the timer display to the page
+        document.getElementById('timers').appendChild(timerElement);
+
+        // Apply CSS classes
+        timerElement.className = 'timer';
+        
+        const titleElement = document.createElement('div');
+        titleElement.className = 'timer-title';
+        titleElement.textContent = `Timer ${pepperId}`;
+        timerElement.appendChild(titleElement);
+
+        const timeElement = document.createElement('div');
+        timeElement.id = `time-${timerId}`;
+        timeElement.textContent = '00:00:00';
+        timerElement.appendChild(timeElement);
+
+        // Update the timer reference to the time display
+        timers[timerId].element = timeElement;
+    }
+}
+
 // Initialization
 
 document.addEventListener('DOMContentLoaded', () => {
     createStateCircles(systemStates, 'system-state-machine', 'system', 'state-machine-container'); // Add 'state-machine-container' class
     createStateCircles(amigaStates, 'amiga-state-machine', 'amiga', 'state-machine-container'); // Add 'state-machine-container' class
-    for (let i = 0; i <= 6; i++) {
-        createTimer(i);
-    }
 
     const socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
 
@@ -122,6 +143,26 @@ document.addEventListener('DOMContentLoaded', () => {
     socket.on('system_state_update', function (data) {
         updateStateMachine(10, data.state, 'system');
     });
+
+
+    socket.on('timer_update', function (data) {
+        // Assuming data.elapsed_time contains the elapsed time in seconds
+        const elapsedSeconds = Math.round(data.elapsed_time);
+        const pepper_id = data.pepper_id;
+
+        const timerKey = 'timer' + pepper_id;
+        console.log('Received timer_update:', pepper_id, " | ", data.elapsed_time);
+
+        // Add a new timer if it doesn't exist
+        addNewTimer(timerKey, pepper_id);
+
+        // Update the specific timer here
+        // For example, updating timer1. Adjust this based on your logic
+        timers[timerKey].seconds = elapsedSeconds;
+        // print in console the value it tis getting
+        updateTimerDisplay(timerKey);
+    });
+
 
     socket.on('amiga_state_update', function (data) {
         console.log('Received amiga_state_update:', data.state);

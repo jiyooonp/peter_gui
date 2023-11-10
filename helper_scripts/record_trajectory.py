@@ -56,7 +56,7 @@ arm.start_record_trajectory()
 time.sleep(8)
 
 arm.stop_record_trajectory()
-arm.save_record_trajectory('from_basket.traj')
+arm.save_record_trajectory('multiframe1.traj')
 
 time.sleep(1)
 

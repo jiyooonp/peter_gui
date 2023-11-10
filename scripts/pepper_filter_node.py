@@ -28,7 +28,7 @@ OBSERVATIONS_METRIC = 20 # unitless
 # if the cluster hasn't been seen in a while get rid of it
 TIME_SINCE_LAST_OB_METRIC = 10
 
-# nearest neighbor metric
+# nearest neighbtime_since_last_obor metric
 NEAREST_NEIGHBOR_METRIC = 0.03 # [m]
 
 
@@ -68,29 +68,24 @@ class PepperFilterNode:
             
             if len(self.clusters)==0:
                 self.clusters.append(new_cluster)
-            rospy.logwarn(f"@@@self.clusters: {self.clusters}")
+            # rospy.logwarn(f"@@@self.clusters: {self.clusters}")
             dists = [(i, c.dist(new_cluster)) for i, c in enumerate(self.clusters)]
-            rospy.logwarn(f"dist:{dists}")
+            # rospy.logwarn(f"dist:{dists}")
 
             # if it does  kalman filter it
             min_ind, min_dist = min(dists, key=lambda d: d[1])
             
-            rospy.logwarn(f"\n=============={val}==================\n{pep.position}")        
-            for i, c in enumerate(self.clusters):
-               rospy.logwarn( f"Min Dist: \n{round(min_dist, 3)} \nDistance Measurements: \n{round(c.dist(new_cluster), 3)} | \nCluster len\n{len(self.clusters)}\nCenter: \n{np.round(c.center, 3)}")
+            # rospy.logwarn(f"\n=============={val}==================\n{pep.position}")        
+            # for i, c in enumerate(self.clusters):
+            #    rospy.logwarn( f"Min Dist: \n{round(min_dist, 3)} \nDistance Measurements: \n{round(c.dist(new_cluster), 3)} | \nCluster len\n{len(self.clusters)}\nCenter: \n{np.round(c.center, 3)}")
             
-            rospy.logwarn(len(self.clusters) ) 
+            # rospy.logwarn(len(self.clusters) ) 
             
             if min_dist < NEAREST_NEIGHBOR_METRIC:
                 self.clusters[min_ind].filter(new_cluster.center, new_cluster.quat)               
             # if it doesn't, make a new cluster
             else:
                 self.clusters.append(new_cluster)
-                
-            # cleanup cluster based on our criteria
-            for c in self.clusters:
-                if c.cleanup(): 
-                    self.clusters.remove(c)
             
             sorting_criteria = lambda p: p.dist_from_ee
             self.clusters = sorted(self.clusters, key=sorting_criteria)
@@ -106,7 +101,23 @@ class PepperFilterNode:
         self.filtered_pois_array.poses = []
         self.filtered_pois_array.header.stamp = rospy.Time.now()
         self.filtered_pois.publish(self.filtered_pois_array)
-        
+
+        # cleanup cluster based on our criteria
+        delete_indices = [i for i, c in enumerate(self.clusters) if c.cleanup()]
+        for i in sorted(delete_indices, reverse=True):
+            del self.clusters[i]
+
+        poi_marker = Marker()
+        poi_marker.type = 0
+        poi_marker.header.frame_id = "link_base"
+        poi_marker.color.r = 1
+        poi_marker.color.g = 1
+        poi_marker.color.b = 0
+        poi_marker.color.a = 1
+        poi_marker.scale.x = 0.08
+        poi_marker.scale.y = 0.005
+        poi_marker.scale.z = 0.005
+
         if self.clusters:
             
             poses_list = []
@@ -116,17 +127,7 @@ class PepperFilterNode:
             
             # poi of interest
             poi_pose = self.clusters[0].get_pose_object()
-            poi_marker = Marker()
-            poi_marker.type = 0
-            poi_marker.header.frame_id = "link_base"
             poi_marker.pose = poi_pose
-            poi_marker.color.r = 1
-            poi_marker.color.g = 1
-            poi_marker.color.b = 0
-            poi_marker.color.a = 1
-            poi_marker.scale.x = 0.08
-            poi_marker.scale.y = 0.005
-            poi_marker.scale.z = 0.005
             
             self.poi_pub.publish(poi_pose)
             self.poi_viz.publish(poi_marker)
@@ -134,6 +135,9 @@ class PepperFilterNode:
             self.filtered_pois_array.poses = poses_list
             self.filtered_pois_array.header.stamp = rospy.Time.now()
             self.filtered_pois.publish(self.filtered_pois_array)
+        else: 
+            poi_marker.pose = Pose()
+            self.poi_viz.publish(poi_marker)
 
     
             
@@ -201,7 +205,6 @@ class Cluster:
         self.center = np.array([position.x, position.y, position.z])
         self.quat = np.array([orientation.x, orientation.y, orientation.z, orientation.w])
         self.vec = self.quat_to_vec(self.quat)
-        
         self.tfBuffer = tf2_ros.Buffer()
         self.listener = tf2_ros.TransformListener(self.tfBuffer)
         
@@ -246,10 +249,10 @@ class Cluster:
         
     def dist(self, new_cluster):
         n = norm(self.center - new_cluster.center)
-        if n < 0.05:
-            rospy.logwarn(f"!!!! self.center: {self.center}, new_cluster.center: {new_cluster.center}")
-        else:
-            rospy.logwarn("different")
+        # if n < 0.05:
+            # rospy.logwarn(f"!!!! self.center: {self.center}, new_cluster.center: {new_cluster.center}")
+        # else:
+            # rospy.logwarn("different")
         return n
     
     def quat_to_vec(self, quat):
@@ -326,6 +329,8 @@ class Cluster:
         
         if self.time_since_last_ob() > TIME_SINCE_LAST_OB_METRIC:
             return True
+        
+        return False
         
         
     def get_pose_object(self):

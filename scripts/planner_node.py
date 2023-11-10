@@ -21,6 +21,7 @@ class PlannerNode:
 
         # initialize values
         rospy.init_node('planner_node', anonymous=True)
+        self.publish_value = -1
         self.state = 0
         self.joy_state = Joy()
         self.visual_servoing_state = Twist() 
@@ -57,8 +58,7 @@ class PlannerNode:
 
     def send_to_ee(self, command):
         """Send commands to open, harvest, or close for end-effector"""
-
-        rospy.wait_for_service('/gripper_service')
+        # rospy.wait_for_service('/gripper_service')
         if command == "open":
             try:
                 Pegasus_action = rospy.ServiceProxy('/gripper_service',Pegasus)
@@ -86,12 +86,14 @@ class PlannerNode:
         # xarm teleoperation
         elif self.state == 1:
             self.joy_pub.publish(self.joy_state) # publish joystick commands to arm and ee
+            self.publish_value = self.state
 
         # move to init
         elif self.state == 2:
             xarm = Manipulator()
             xarm.moveToInit()
             rospy.sleep(1)
+            self.publish_value = self.state
 
         # ----- AUTONOMOUS SEQUENCE -----
         # move to init position and open end-effector
@@ -102,12 +104,14 @@ class PlannerNode:
                 rospy.sleep(.1)
                 xarm.disconnect()
                 rospy.sleep(.1)
+                rospy.logwarn("Plan Execution: Initalization Started")
                 self.send_to_ee("open")
                 rospy.logwarn("Plan Execution: Initalization Complete")
-                self.planner_state_pub.publish(3)
+                self.publish_value = self.state
             except:
                 rospy.logwarn("ERROR: UNABLE TO INITIALIZE AUTONOMOUS PROCEDURE")
                 self.state_pub.publish(10)
+                self.publish_value = 10
     
         # multiframe
         elif self.state == 4:
@@ -118,10 +122,11 @@ class PlannerNode:
                 xarm.disconnect()
                 rospy.sleep(.1)
                 rospy.logwarn("Plan Execution: Multiframe Complete")
-                self.planner_state_pub.publish(self.state)
+                self.publish_value = self.state
             except:
                 rospy.logwarn("ERROR: UNABLE TO MULTIFRAME")
                 self.state_pub.publish(10)
+                self.publish_value = 10
 
         # move to pre-grasp
         elif self.state == 5:
@@ -135,10 +140,11 @@ class PlannerNode:
                 rospy.sleep(.1)
                 xarm.disconnect()
                 rospy.sleep(.1)
-                self.planner_state_pub.publish(self.state)
+                self.publish_value = self.state
             except Exception as e:
                 rospy.logwarn(f"ERROR: UNABLE TO MOVE TO PREGRASP POSITION {e}")
                 self.state_pub.publish(10)
+                self.publish_value = 10
 
         # move to poi
         elif self.state == 6:
@@ -149,19 +155,22 @@ class PlannerNode:
                 xarm.disconnect()
                 rospy.sleep(.1)
                 rospy.logwarn("Plan Execution: Move to POI Complete")
-                self.planner_state_pub.publish(self.state)
+                self.publish_value = self.state
             except:
                 rospy.logwarn("ERROR: UNABLE TO MOVE TO POI")
                 self.state_pub.publish(10)
+                self.publish_value = 10
 
         # harvest pepper
         elif self.state == 7:
             self.send_to_ee("harvest")
-            self.planner_state_pub.publish(self.state)
+            self.publish_value = self.state
+            
 
         # move to basket and drop then go back to init
         elif self.state == 8:
             try:
+                self.poi = None
                 rospy.sleep(.1)
                 xarm = Manipulator()
                 xarm.moveToBasket()
@@ -177,15 +186,16 @@ class PlannerNode:
                 rospy.logwarn("Plan Execution: Move from Basket Complete")
                 xarm.disconnect()
                 rospy.sleep(.1)
-                self.planner_state_pub.publish(self.state)
+                self.publish_value = self.state
             except:
                 rospy.logwarn("ERROR: UNABLE TO MOVE TO BASKET")
                 self.state_pub.publish(10)
+                self.publish_value = 10
 
         else:
             rospy.logwarn("ERROR: UNRECOGNIZED STATE IN PLANNER NODE")
             self.state_pub.publish(10)
-            
+
         # dispay pregrasp visualization
         if self.poi:
             self.visualizePregrasp(self.poi.position.x, self.poi.position.y, self.poi.position.z)
@@ -220,6 +230,7 @@ if __name__ == '__main__':
         planner_node = PlannerNode()
         while not rospy.is_shutdown():
             planner_node.run()
+            planner_node.planner_state_pub.publish(planner_node.publish_value)
             rospy.sleep(0.1)
 
     except rospy.ROSInterruptException:

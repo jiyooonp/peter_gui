@@ -58,9 +58,7 @@ class StateMachineNode:
     # --------- PLANNER STATE CALLBACK -------------
     def planner_state_callback(self, data):
         """Callback for planner state message"""
-        if self.plan_executed != data.data:
-            print("plan executed - state machine")
-            self.plan_executed = data.data
+        self.plan_executed = data.data
 
 
     # --------- MANIPULATOR STATE CALLBACK -------------
@@ -104,31 +102,32 @@ class StateMachineNode:
 
 
     # --------- POI DETECTION CALLBACK -------------
-    def detection_callback(self):
+    def detection_callback(self,msg):
         """Determine if there has been a detection in this cycle of states"""
         if self.state == 8: # reset self.detection after moving to basket
             self.detection = None
         else:
             self.detection = 1
 
-
-    # --------- DECIDE STATE -------------
+    # --------- DECIDE STATE -------------s
     def decide_state(self):
          # idle - amiga teleop 
         if self.state == 0 or self.state == 1 or self.state == 2:
             pass
 
-        # once basket move is completed, go to state 3
-        elif self.state == 8 and self.plan_executed == self.state and not self.manipulator_moving:
-            self.state = 3
-
-        # if no detections are found during multiframe, go to amiga teleop
-        elif self.state == 4 and self.plan_executed == self.state and not self.manipulator_moving and not self.detection:
-            self.state = 0
-
-        # update state once plan is executed
         elif self.plan_executed == self.state and not self.manipulator_moving:
-            self.state += 1
+
+            # once basket move is completed, go to init
+            if self.state == 8:
+                self.state = 3
+
+            # if no detections are found during multiframe, go to amiga teleop
+            elif self.state == 4 and not self.detection:
+                self.state = 0
+
+            # update state once plan is executed
+            else:
+                self.state += 1
 
         else:
             rospy.loginfo_throttle_identical(1,"ERROR: UNRECOGNIZED STATE IN STATE MACHINE NODE")

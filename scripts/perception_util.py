@@ -8,6 +8,7 @@ from sensor_msgs.msg import Image, CameraInfo
 from std_msgs.msg import String, Int16, Bool
 from geometry_msgs.msg import Point, Pose
 from visualization_msgs.msg import Marker
+from geometry_msgs.msg import Point, Pose, PoseArray, Quaternion
 
 import message_filters
 
@@ -22,6 +23,7 @@ import message_filters
 
 import tf2_ros
 from tf.transformations import quaternion_matrix
+from scipy.spatial.transform import Rotation as R
 
 from ultralytics import YOLO
 
@@ -97,3 +99,42 @@ def random_color():
     b = random.randint(0, 255)
     a = random.random()  # returns a float between 0 and 1
     return (r, g, b, a)
+
+def get_pose_object( position, orientation):
+    pose = Pose()
+    pose.position = Point(x=position[0], y=position[1], z=position[2])
+    orientation = np.array(
+        [orientation[0], orientation[1], orientation[2]])
+    orientation = orientation/np.linalg.norm(orientation)
+
+    if orientation[0] == 0 and orientation[1] == 0 and orientation[2] == 1:
+        cross_vector = np.array([0, 1, 0])
+    else:
+        cross_vector = np.array([0, 0, 1])
+
+    cross1 = np.cross(orientation, cross_vector)
+    cross2 = np.cross(orientation, cross1)
+    rotation = np.array([orientation, cross1, cross2]).T
+
+    r = R.from_matrix(rotation)
+    quat = r.as_quat()
+    pose.orientation = Quaternion(
+        x=quat[0], y=quat[1], z=quat[2], w=quat[3])
+
+    return pose
+
+def transform_to_base_frame(transformation, X, Y, Z):
+
+    # Get translation and rotation
+    trans, quat = transformation.transform.translation, transformation.transform.rotation
+
+    # Create homogeneous matrix
+    homo_matrix = np.asarray(quaternion_matrix(
+        [quat.x, quat.y, quat.z, quat.w]))
+    homo_matrix[:3, 3] = np.array([trans.x, trans.y, trans.z])
+
+    # Transform to base frame
+    point_camera_frame = np.array([X, Y, Z, 1])
+    point_base_frame = np.matmul(homo_matrix, point_camera_frame)
+
+    return point_base_frame[0], point_base_frame[1], point_base_frame[2]

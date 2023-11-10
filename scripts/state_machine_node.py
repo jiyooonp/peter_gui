@@ -4,6 +4,7 @@
 import rospy
 from sensor_msgs.msg import Joy
 from sensor_msgs.msg import JointState
+from geometry_msgs.msg import Pose
 from std_msgs.msg import Int16, Bool
 
 from xarm_msgs.srv import SetInt16, SetInt16Response
@@ -44,18 +45,23 @@ class StateMachineNode:
         # --------- ROBOT SUBSYSTEM SUBSCRIBERS -------------
         self.manipulator_state_sub = rospy.Subscriber('/xarm/jointState', JointState, self.manipulator_state_callback, queue_size=1)
         self.planner_state_sub = rospy.Subscriber('/planner_state', Int16, self.planner_state_callback, queue_size=1)
+        self.poi_sub = rospy.Subscriber('/poi', Pose, self.detection_callback, queue_size=1)
 
-        # --------- ROBOT SUBSYSTEM VARIABLES -------------
+
+        # --------- ROBOT SUBSYSTEM VARIABLES ---------------
         self.manipulator_moving = None
         self.zero_vel_threshold = 1e-3
         self.plan_executed = None
+        self.detection = None
+
 
     # --------- PLANNER STATE CALLBACK -------------
     def planner_state_callback(self, data):
         """Callback for planner state message"""
         if self.plan_executed != data.data:
-            print("plan executed - state machine")  #debug
+            print("plan executed - state machine")
             self.plan_executed = data.data
+
 
     # --------- MANIPULATOR STATE CALLBACK -------------
     def manipulator_state_callback(self, joint):
@@ -93,7 +99,18 @@ class StateMachineNode:
         elif self.joy_state[3] and self.state != 0:
             self.state = 0
             rospy.loginfo("Enter Idle Mode")
-        
+
+        # TODO: add a button for calling move to init - manual (state 2)
+
+
+    # --------- POI DETECTION CALLBACK -------------
+    def detection_callback(self):
+        """Determine if there has been a detection in this cycle of states"""
+        if self.state == 8: # reset self.detection after moving to basket
+            self.detection = None
+        else:
+            self.detection = 1
+
 
     # --------- DECIDE STATE -------------
     def decide_state(self):
@@ -101,8 +118,12 @@ class StateMachineNode:
         if self.state == 0 or self.state == 1 or self.state == 2:
             pass
 
-        # once basket move is completed, go to state 0
+        # once basket move is completed, go to state 3
         elif self.state == 8 and self.plan_executed == self.state and not self.manipulator_moving:
+            self.state = 3
+
+        # if no detections are found during multiframe, go to amiga teleop
+        elif self.state == 4 and self.plan_executed == self.state and not self.manipulator_moving and not self.detection:
             self.state = 0
 
         # update state once plan is executed

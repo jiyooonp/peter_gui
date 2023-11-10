@@ -30,7 +30,7 @@ class PlannerNode:
         # subscribers
         self.state_sub = rospy.Subscriber('/state', Int16, self.state_callback, queue_size=1) # state message
         self.joystick_sub = rospy.Subscriber('/joy', Joy, self.joystick_callback, queue_size=1) # joystick message        
-        self.pose_sub = rospy.Subscriber('/poi', Pose, self.poi_callback, queue_size=1) # poi pose
+        self.poi_sub = rospy.Subscriber('/poi', Pose, self.poi_callback, queue_size=1) # poi pose
 
         # publishers
         self.joy_pub = rospy.Publisher('/joy_relay', Joy, queue_size=1) # joystick commands pub
@@ -122,7 +122,7 @@ class PlannerNode:
             except:
                 rospy.logwarn("ERROR: UNABLE TO MULTIFRAME")
                 self.state_pub.publish(10)
-            
+
         # move to pre-grasp
         elif self.state == 5:
             try:

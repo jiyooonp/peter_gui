@@ -17,14 +17,14 @@ const amigaStates = [
     { title: 'Autonomous', value: 'Autonomously Moving' },
     { title: 'Manual', value: 'IDK' },
 ];
-
+// JavaScript for handling the state machines and timers
 function createStateCircles(states, containerId, prefix) {
     const container = document.getElementById(containerId);
     container.classList.add('state-machine-container'); // Add a container class
 
     states.forEach((state, index) => {
         const stateRectangle = document.createElement('div');
-        stateRectangle.className = 'state-rectangle';
+        stateRectangle.className = 'state-circle';
         stateRectangle.id = `${prefix}-state-${index}`;
 
         const stateTitle = document.createElement('div');
@@ -48,9 +48,8 @@ function createStateCircles(states, containerId, prefix) {
     });
 }
 
-
-function updateStateMachine(state, prefix) {
-    for (let i = 1; i <= 11; i++) {
+function updateStateMachine(state_len, state, prefix) {
+    for (let i = 0; i <= state_len; i++) {
         const stateCircle = document.getElementById(`${prefix}-state-${i}`);
         stateCircle.classList.remove('active');
     }
@@ -59,7 +58,6 @@ function updateStateMachine(state, prefix) {
         activeState.classList.add('active');
     }
 }
-
 
 // Timer functionality
 let timers = [];
@@ -72,6 +70,7 @@ function startTimer(timerId) {
         timerElement.textContent = `Timer ${timerId}: ${new Date(seconds * 1000).toISOString().substr(11, 8)}`;
     }, 1000);
 }
+
 
 function createTimer(timerId) {
     const timerButton = document.createElement('button');
@@ -110,24 +109,23 @@ function padZero(num) {
 
 // Initialization
 
-document.addEventListener('DOMContentLoaded', (event) => {
-    createStateCircles(systemStates, 'system-state-machine', 'system');
-
-    createStateCircles(amigaStates, 'amiga-state-machine', 'amiga');
-
-    for (let i = 1; i <= 6; i++) {
+document.addEventListener('DOMContentLoaded', () => {
+    createStateCircles(systemStates, 'system-state-machine', 'system', 'state-machine-container'); // Add 'state-machine-container' class
+    createStateCircles(amigaStates, 'amiga-state-machine', 'amiga', 'state-machine-container'); // Add 'state-machine-container' class
+    for (let i = 0; i <= 6; i++) {
         createTimer(i);
     }
 
     const socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
 
     // Listen for state update events
-    socket.on('state_update', function (data) {
-        // console.log('Received state update:', data);
-        updateStateMachine(data.state, 'system');
+    socket.on('system_state_update', function (data) {
+        updateStateMachine(10, data.state, 'system');
     });
+
+    socket.on('amiga_state_update', function (data) {
+        console.log('Received amiga_state_update:', data.state);
+        updateStateMachine(3, data.state, 'amiga');
+    });
+
 });
-
-
-
-

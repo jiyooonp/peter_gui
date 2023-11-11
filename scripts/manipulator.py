@@ -36,6 +36,9 @@ class Manipulator:
         self.arm.connect()
         self.arm.set_mode(0)
         self.arm.set_state(0)
+        # self.arm.load_trajectory('from_basket.traj')
+        # self.arm.load_trajectory('to_basket.traj')
+
 
     def parseYaml(self, yaml_file, package_path):
         """parse the yaml to get parameters"""
@@ -101,16 +104,21 @@ class Manipulator:
         """move to basket pose for pepper drop off"""
         self.cartesianMove(-0.05,0) # move back 5 cm
         self.orientParallel() # straighten orientation if needed
-        self.cartesianMove(-0.15,0) # move back 15 cm
+        self.cartesianMove(-0.18,0) # move back 15 cm
         rospy.logwarn("Moving to basket pose")
-        self.arm.load_trajectory('to_basket.traj')
-        self.arm.playback_trajectory()
+        # self.arm.load_trajectory('to_basket.traj')
+        self.arm.playback_trajectory(filename='to_basket.traj',wait=True)
+
+        rospy.logwarn("Done Traj to basket")
 
     def moveFromBasket(self):
         """move away from basket pose"""
         rospy.logwarn("Moving from basket pose")
-        self.arm.load_trajectory('from_basket.traj')
-        self.arm.playback_trajectory()
+        # rospy.logwarn(f"ERROR CODE: {self.arm.load_trajectory('from_basket.traj')}")
+        # self.arm.load_trajectory('from_basket.traj')
+        self.arm.playback_trajectory(filename='from_basket.traj',wait=True)
+
+        rospy.logwarn("Done Traj from  basket")
 
     def multiframe(self):
         """scan down the pepper plant"""
@@ -126,7 +134,9 @@ class Manipulator:
         # current_pose = self.arm.get_position()[1]
         self.moveToBasket()
         rospy.sleep(10)
-        # self.moveFromBasket()
+        self.moveFromBasket()
+        for traj in self.arm.get_trajectories():
+            print(traj)
         # move to init        # rospy.sleep(10)
 
         # self.moveToInit()

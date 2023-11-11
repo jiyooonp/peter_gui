@@ -23,7 +23,7 @@ class Manipulator:
         self.ee_length_offset = None
         self.init_pose = None
         self.orientation = None
-        self.encore = rospy.get_param('/encore')
+        self.encore = False#rospy.get_param('/encore')
         self.ip = rospy.get_param('/xarm_robot_ip')
         arm_yaml = rospy.get_param('/arm_yaml')
         rospack = rospkg.RosPack()
@@ -99,23 +99,23 @@ class Manipulator:
 
     def moveToBasket(self):
         """move to basket pose for pepper drop off"""
-        self.cartesianMove(-0.05,0) # move back 5 cm
-        self.orientParallel() # straighten orientation if needed
-        self.cartesianMove(-0.15,0) # move back 15 cm
-        print("Moving to basket pose")
+        # self.cartesianMove(-0.05,0) # move back 5 cm
+        # self.orientParallel() # straighten orientation if needed
+        # self.cartesianMove(-0.15,0) # move back 15 cm
+        rospy.logwarn("Moving to basket pose")
         self.arm.load_trajectory('to_basket.traj')
         self.arm.playback_trajectory()
 
     def moveFromBasket(self):
         """move away from basket pose"""
-        print("Moving from basket pose")
+        rospy.logwarn("Moving from basket pose")
         self.arm.load_trajectory('from_basket.traj')
         self.arm.playback_trajectory()
 
     def multiframe(self):
         """scan down the pepper plant"""
         print("Multiframe: scanning down the plant")
-        self.cartesianMove(0.2,2) # move down 20 cm in z
+        self.cartesianMove(-0.2,2) # move down 20 cm in z
     
     def disconnect(self):
         """disconnect from xarm"""
@@ -123,8 +123,12 @@ class Manipulator:
 
     def test(self):
         print("TESTING")
-        current_pose = self.arm.get_position()[1]
-        # move to init
+        # current_pose = self.arm.get_position()[1]
+        self.moveToBasket()
+        rospy.sleep(10)
+        # self.moveFromBasket()
+        # move to init        # rospy.sleep(10)
+
         # self.moveToInit()
 
         # pepper drop off and reset
@@ -140,8 +144,9 @@ if __name__ == '__main__':
 
     try:
         xarm = Manipulator()
+        xarm.test()
+
         while not rospy.is_shutdown():
-            # xarm.test()
             rospy.sleep(0.1)
 
     except rospy.ROSInterruptException:

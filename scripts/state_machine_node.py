@@ -104,7 +104,7 @@ class StateMachineNode:
     # --------- POI DETECTION CALLBACK -------------
     def detection_callback(self,msg):
         """Determine if there has been a detection in this cycle of states"""
-        if self.state == 8: # reset self.detection after moving to basket
+        if self.state == 8: # reset self.detection after moving to basket , TODO spin rate???
             self.detection = None
         else:
             self.detection = 1
@@ -112,25 +112,30 @@ class StateMachineNode:
     # --------- DECIDE STATE -------------s
     def decide_state(self):
          # idle - amiga teleop 
-        if self.state == 0 or self.state == 1 or self.state == 2:
-            pass
+        if self.plan_executed != 10:
+            # if self.state <=2:
+            #     pass
+            
+            if not self.manipulator_moving and self.plan_executed == self.state:
 
-        elif self.plan_executed == self.state and not self.manipulator_moving:
+                # once basket move is completed, go to init
+                if self.state == 8:
+                    self.state = 3
 
-            # once basket move is completed, go to init
-            if self.state == 8:
-                self.state = 3
-
-            # if no detections are found during multiframe, go to amiga teleop
-            elif self.state == 4 and not self.detection:
-                self.state = 0
-
-            # update state once plan is executed
+                # if no detections are found during multiframe, go to amiga teleop
+                elif self.state == 4 and not self.detection:
+                    self.state = 10 # did multiframe but no detection 
+                    rospy.loginfo_throttle_identical(1,"ERROR: MULTIFRAMED BUT NO DETECTION")
+                # update state once plan is executed
+                else:
+                    self.state += 1
             else:
-                self.state += 1
-
+                rospy.loginfo_throttle_identical(1,f"moving: {self.manipulator_moving} , planner: {self.plan_executed},  state: {self.state}")
+            # else:
+            #     # arm is moving or exectuing a state
+            #     rospy.loginfo_throttle_identical(1,"eXXECUTING PLAN")
         else:
-            rospy.loginfo_throttle_identical(1,"ERROR: UNRECOGNIZED STATE IN STATE MACHINE NODE")
+            rospy.loginfo_throttle_identical(1,"ERROR: PLANNER ERROR, UNABLE TO EXECUTE PLAN")
             self.state == 10
 
 

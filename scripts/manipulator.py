@@ -99,9 +99,9 @@ class Manipulator:
 
     def moveToBasket(self):
         """move to basket pose for pepper drop off"""
-        # self.cartesianMove(-0.05,0) # move back 5 cm
-        # self.orientParallel() # straighten orientation if needed
-        # self.cartesianMove(-0.15,0) # move back 15 cm
+        self.cartesianMove(-0.05,0) # move back 5 cm
+        self.orientParallel() # straighten orientation if needed
+        self.cartesianMove(-0.15,0) # move back 15 cm
         rospy.logwarn("Moving to basket pose")
         self.arm.load_trajectory('to_basket.traj')
         self.arm.playback_trajectory()
@@ -144,7 +144,7 @@ if __name__ == '__main__':
 
     try:
         xarm = Manipulator()
-        xarm.test()
+        # xarm.test()
 
         while not rospy.is_shutdown():
             rospy.sleep(0.1)

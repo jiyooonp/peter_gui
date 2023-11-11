@@ -31,6 +31,11 @@ TIME_SINCE_LAST_OB_METRIC = 10
 # nearest neighbtime_since_last_obor metric
 NEAREST_NEIGHBOR_METRIC = 0.03 # [m]
 
+# explicit rejection of peppers happens above this value
+RADIAL_REJECTION = 100.0 # [cm]
+
+RADIAL_REJECTION /= 100.0 # [m]
+
 
 class PepperFilterNode:
     
@@ -64,6 +69,10 @@ class PepperFilterNode:
             
             new_cluster = Cluster(pep.position, pep.orientation, len(self.clusters) + 1)
             # see if pepper belongs to a pre-existing cluster
+            
+            # reject clusters too far from base frame
+            if norm(new_cluster.center) > RADIAL_REJECTION: 
+                break
             
             if self.clusters:
                 
@@ -320,7 +329,6 @@ class Cluster:
         pose = Pose()
         pose.position = Point(*self.center)
         
-        # quat = self.vec_to_quat(self.vec)
         pose.orientation = Quaternion(*self.quat)
         
         return pose

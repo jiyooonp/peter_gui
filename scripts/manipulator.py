@@ -23,6 +23,7 @@ class Manipulator:
         self.ee_length_offset = None
         self.init_pose = None
         self.orientation = None
+        self.paths = None
         self.encore = False#rospy.get_param('/encore')
         self.ip = rospy.get_param('/xarm_robot_ip')
         arm_yaml = rospy.get_param('/arm_yaml')
@@ -39,7 +40,6 @@ class Manipulator:
         # self.arm.load_trajectory('from_basket.traj')
         # self.arm.load_trajectory('to_basket.traj')
 
-
     def parseYaml(self, yaml_file, package_path):
         """parse the yaml to get parameters"""
         data = dict()
@@ -49,6 +49,7 @@ class Manipulator:
         self.ee_length_offset = data["ee_offset"]
         self.init_pose = data["init_pose"]
         self.orientation = data["orientation"]
+        self.paths = data["paths"]
 
     def moveToInit(self):
         """move to initial position"""
@@ -124,7 +125,11 @@ class Manipulator:
         """scan down the pepper plant"""
         print("Multiframe: scanning down the plant")
         self.cartesianMove(-0.2,2) # move down 20 cm in z
-    
+
+    def execute_traj(self):
+        """execute an interpolated trajectory of waypoints"""
+        self.arm.move_arc_lines(self.paths, speed=50, times=1, wait=True)
+
     def disconnect(self):
         """disconnect from xarm"""
         self.arm.disconnect()
@@ -132,21 +137,18 @@ class Manipulator:
     def test(self):
         print("TESTING")
         # current_pose = self.arm.get_position()[1]
-        self.moveToBasket()
-        rospy.sleep(10)
-        self.moveFromBasket()
-        for traj in self.arm.get_trajectories():
-            print(traj)
-        # move to init        # rospy.sleep(10)
-
-        # self.moveToInit()
-
-        # pepper drop off and reset
         # self.moveToBasket()
         # rospy.sleep(10)
+
         # self.moveFromBasket()
-        # rospy.sleep(10)
+        # for traj in self.arm.get_trajectories():
+        #     print(traj)
+
         # self.moveToInit()
+
+        self.execute_traj()
+        print("done executing trajectory")
+
         return
 
 
@@ -154,7 +156,7 @@ if __name__ == '__main__':
 
     try:
         xarm = Manipulator()
-        # xarm.test()
+        xarm.test()
 
         while not rospy.is_shutdown():
             rospy.sleep(0.1)

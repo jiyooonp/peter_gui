@@ -23,7 +23,8 @@ class Manipulator:
         self.ee_length_offset = None
         self.init_pose = None
         self.orientation = None
-        self.paths = None
+        self.to_basket_points = None
+        self.from_basket_points = None
         self.encore = False#rospy.get_param('/encore')
         self.ip = rospy.get_param('/xarm_robot_ip')
         arm_yaml = rospy.get_param('/arm_yaml')
@@ -49,7 +50,8 @@ class Manipulator:
         self.ee_length_offset = data["ee_offset"]
         self.init_pose = data["init_pose"]
         self.orientation = data["orientation"]
-        self.paths = data["paths"]
+        self.to_basket_points = data["to_basket_points"]
+        self.from_basket_points = data["from_basket_points"]
 
     def moveToInit(self):
         """move to initial position"""
@@ -108,8 +110,8 @@ class Manipulator:
         self.cartesianMove(-0.18,0) # move back 15 cm
         rospy.logwarn("Moving to basket pose")
         # self.arm.load_trajectory('to_basket.traj')
-        self.arm.playback_trajectory(filename='to_basket.traj',wait=True)
-
+        # self.arm.playback_trajectory(filename='to_basket.traj',wait=True)
+        self.execute_traj(self.to_basket_points)
         rospy.logwarn("Done Traj to basket")
 
     def moveFromBasket(self):
@@ -117,8 +119,8 @@ class Manipulator:
         rospy.logwarn("Moving from basket pose")
         # rospy.logwarn(f"ERROR CODE: {self.arm.load_trajectory('from_basket.traj')}")
         # self.arm.load_trajectory('from_basket.traj')
-        self.arm.playback_trajectory(filename='from_basket.traj',wait=True)
-
+        # self.arm.playback_trajectory(filename='from_basket.traj',wait=True)
+        self.execute_traj(self.from_basket_points)
         rospy.logwarn("Done Traj from  basket")
 
     def multiframe(self):
@@ -126,9 +128,9 @@ class Manipulator:
         print("Multiframe: scanning down the plant")
         self.cartesianMove(-0.2,2) # move down 20 cm in z
 
-    def execute_traj(self):
+    def execute_traj(self, points):
         """execute an interpolated trajectory of waypoints"""
-        self.arm.move_arc_lines(self.paths, speed=50, times=1, wait=True)
+        self.arm.move_arc_lines(points, speed=50, times=1, wait=True)
 
     def disconnect(self):
         """disconnect from xarm"""
@@ -146,7 +148,7 @@ class Manipulator:
 
         # self.moveToInit()
 
-        self.execute_traj()
+        self.execute_traj(self.to_basket_points)
         print("done executing trajectory")
 
         return
@@ -156,7 +158,7 @@ if __name__ == '__main__':
 
     try:
         xarm = Manipulator()
-        xarm.test()
+        # xarm.test()
 
         while not rospy.is_shutdown():
             rospy.sleep(0.1)

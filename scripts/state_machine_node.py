@@ -113,10 +113,10 @@ class StateMachineNode:
     def decide_state(self):
          # idle - amiga teleop 
         if self.plan_executed != 10:
-            # if self.state <=2:
-            #     pass
+            if self.state <=2:
+                pass
             
-            if not self.manipulator_moving and self.plan_executed == self.state:
+            elif not self.manipulator_moving and self.plan_executed == self.state:
 
                 # once basket move is completed, go to init
                 if self.state == 8:

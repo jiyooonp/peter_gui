@@ -109,19 +109,14 @@ class Manipulator:
         self.orientParallel() # straighten orientation if needed
         self.cartesianMove(-0.18,0) # move back 15 cm
         rospy.logwarn("Moving to basket pose")
-        # self.arm.load_trajectory('to_basket.traj')
-        # self.arm.playback_trajectory(filename='to_basket.traj',wait=True)
         self.execute_traj(self.to_basket_points)
         rospy.logwarn("Done Traj to basket")
 
     def moveFromBasket(self):
         """move away from basket pose"""
         rospy.logwarn("Moving from basket pose")
-        # rospy.logwarn(f"ERROR CODE: {self.arm.load_trajectory('from_basket.traj')}")
-        # self.arm.load_trajectory('from_basket.traj')
-        # self.arm.playback_trajectory(filename='from_basket.traj',wait=True)
         self.execute_traj(self.from_basket_points)
-        rospy.logwarn("Done Traj from  basket")
+        rospy.logwarn("Done Traj from basket")
 
     def multiframe(self):
         """scan down the pepper plant"""
@@ -139,6 +134,7 @@ class Manipulator:
     def test(self):
         print("TESTING")
         # current_pose = self.arm.get_position()[1]
+        # print(current_pose)
         # self.moveToBasket()
         # rospy.sleep(10)
 
@@ -148,7 +144,7 @@ class Manipulator:
 
         # self.moveToInit()
 
-        self.execute_traj(self.to_basket_points)
+        self.execute_traj(self.from_basket_points)
         print("done executing trajectory")
 
         return
@@ -158,7 +154,7 @@ if __name__ == '__main__':
 
     try:
         xarm = Manipulator()
-        # xarm.test()
+        xarm.test()
 
         while not rospy.is_shutdown():
             rospy.sleep(0.1)

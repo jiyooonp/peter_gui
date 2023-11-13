@@ -1,17 +1,15 @@
 /* State machine styles */
 .state-machine-container {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     align-items: center;
+    justify-content: space-around;/* This will space out the states evenly */
 }
 
 .state-circle {
-    width: 200px;
     padding: 10px;
     background-color: #ccc;
     margin: 0 10px;
-    display: flex;
-    flex-direction: column;
     align-items: center;
     border-radius: 5%;
     box-shadow: 0 0 10px rgba(67, 65, 67, 0.7);
@@ -19,6 +17,24 @@
     transition: box-shadow 0.3s ease-in-out;
 }
 
+.state-circle-m {
+    width: 200px;
+    height: 100px;
+    display: inline-block;
+    flex-direction: row;
+}
+.state-circle-s {
+    width: 200px;
+    height: 50px;
+    display: flex;
+    flex-direction: column;
+}
+.state-circle-l {
+    width: 200px;
+    height: 150px;
+    display: inline-block;
+    flex-direction: row;
+}
 .state-circle.active {
     background-color: rgb(10, 132, 47);
     /* Blinking effect color */
@@ -45,7 +61,7 @@
     font-weight: bold;
 }
 
-.arrow {
+.arrow-down {
     width: 20px;
     height: 0;
     border-left: 10px solid transparent;
@@ -53,12 +69,25 @@
     border-top: 10px solid #ccc;
     margin: 0 10px;
 }
-
-.arrow-down {
+.arrow-right {
     width: 0;
     height: 0;
-    border-left: 20px solid transparent;
-    border-right: 20px solid transparent;
-    border-bottom: 20px solid #ccc;
+    border-top: 10px solid transparent;
+    /* Top border, transparent */
+    border-bottom: 10px solid transparent;
+    /* Bottom border, transparent */
+    border-left: 10px solid #ccc;
+    /* Left border, visible part of the triangle */
+    margin: 2px;
+    /* Adjust margin as needed */
 }
 
+.flex-container {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.vertical-container {
+    display: flex;
+    flex-direction: column;
+}

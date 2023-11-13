@@ -23,6 +23,8 @@ class Manipulator:
         self.ee_length_offset = None
         self.init_pose = None
         self.orientation = None
+        self.to_basket_points = None
+        self.from_basket_points = None
         self.encore = False#rospy.get_param('/encore')
         self.ip = rospy.get_param('/xarm_robot_ip')
         arm_yaml = rospy.get_param('/arm_yaml')
@@ -36,9 +38,6 @@ class Manipulator:
         self.arm.connect()
         self.arm.set_mode(0)
         self.arm.set_state(0)
-        # self.arm.load_trajectory('from_basket.traj')
-        # self.arm.load_trajectory('to_basket.traj')
-
 
     def parseYaml(self, yaml_file, package_path):
         """parse the yaml to get parameters"""
@@ -49,11 +48,13 @@ class Manipulator:
         self.ee_length_offset = data["ee_offset"]
         self.init_pose = data["init_pose"]
         self.orientation = data["orientation"]
+        self.to_basket_points = data["to_basket_points"]
+        self.from_basket_points = data["from_basket_points"]
 
     def moveToInit(self):
         """move to initial position"""
         print("Moving to initial pose")
-        self.arm.set_position(*self.init_pose, wait=True, speed=25)
+        self.arm.set_position(*self.init_pose, wait=True, speed=30)
 
     def cartesianMove(self,dist,axis): 
         """cartesian move along y"""
@@ -75,7 +76,7 @@ class Manipulator:
         x -= self.ee_length_offset
 
         # move to new position
-        self.arm.set_position(x * 1000 ,y * 1000 ,z * 1000 ,*self.orientation, wait=True, speed=25)
+        self.arm.set_position(x * 1000 ,y * 1000 ,z * 1000 ,*self.orientation, wait=True, speed=30)
 
         # update roll angle
         if self.encore:
@@ -91,14 +92,14 @@ class Manipulator:
             # calculate the roll angle
             theta = math.atan2(y_comp, z_comp)
             self.orientation[1] += (math.pi - theta) * (180/math.pi)
-            self.arm.set_position(x * 1000 ,y * 1000 ,z * 1000 ,*self.orientation, wait=True, speed=25)
+            self.arm.set_position(x * 1000 ,y * 1000 ,z * 1000 ,*self.orientation, wait=True, speed=30)
 
     def moveToPoi(self):
         self.cartesianMove(self.pregrasp_offset,0) # move forward in x
 
     def orientParallel(self):
         current_pos = self.arm.get_position()[1]
-        self.arm.set_position(*current_pos[0:3] ,*self.orientation, wait=True, speed=25)
+        self.arm.set_position(*current_pos[0:3] ,*self.orientation, wait=True, speed=30)
 
     def moveToBasket(self):
         """move to basket pose for pepper drop off"""
@@ -106,25 +107,24 @@ class Manipulator:
         self.orientParallel() # straighten orientation if needed
         self.cartesianMove(-0.18,0) # move back 15 cm
         rospy.logwarn("Moving to basket pose")
-        # self.arm.load_trajectory('to_basket.traj')
-        self.arm.playback_trajectory(filename='to_basket.traj',wait=True)
-
+        self.execute_traj(self.to_basket_points)
         rospy.logwarn("Done Traj to basket")
 
     def moveFromBasket(self):
         """move away from basket pose"""
         rospy.logwarn("Moving from basket pose")
-        # rospy.logwarn(f"ERROR CODE: {self.arm.load_trajectory('from_basket.traj')}")
-        # self.arm.load_trajectory('from_basket.traj')
-        self.arm.playback_trajectory(filename='from_basket.traj',wait=True)
-
-        rospy.logwarn("Done Traj from  basket")
+        self.execute_traj(self.from_basket_points)
+        rospy.logwarn("Done Traj from basket")
 
     def multiframe(self):
         """scan down the pepper plant"""
         print("Multiframe: scanning down the plant")
-        self.cartesianMove(-0.2,2) # move down 20 cm in z
-    
+        self.cartesianMove(-0.2,2) # move up 20 cm in z
+
+    def execute_traj(self, points):
+        """execute an interpolated trajectory of waypoints"""
+        self.arm.move_arc_lines(points, speed=50, times=1, wait=True)
+
     def disconnect(self):
         """disconnect from xarm"""
         self.arm.disconnect()
@@ -132,21 +132,19 @@ class Manipulator:
     def test(self):
         print("TESTING")
         # current_pose = self.arm.get_position()[1]
-        self.moveToBasket()
-        rospy.sleep(10)
-        self.moveFromBasket()
-        for traj in self.arm.get_trajectories():
-            print(traj)
-        # move to init        # rospy.sleep(10)
-
-        # self.moveToInit()
-
-        # pepper drop off and reset
+        # print(current_pose)
         # self.moveToBasket()
         # rospy.sleep(10)
+
         # self.moveFromBasket()
-        # rospy.sleep(10)
+        # for traj in self.arm.get_trajectories():
+        #     print(traj)
+
         # self.moveToInit()
+
+        self.execute_traj(self.from_basket_points)
+        print("done executing trajectory")
+
         return
 
 

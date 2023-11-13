@@ -172,6 +172,33 @@ class PlannerNode:
             self.send_to_ee("harvest")
             self.publish_value = 7
             
+        # move to basket and drop then go back to init
+        elif self.state == 8:
+            try:
+                self.poi = None
+                rospy.sleep(.1)
+                xarm = Manipulator()
+                xarm.moveToBasket()
+                rospy.logwarn("Moved to basket")
+                # rospy.sleep(5)
+                # while(xarm.arm.get_is_moving()):
+                    # rospy.sleep(.1) 
+                xarm.disconnect()
+                rospy.logwarn("Plan Execution: Move to Basket Complete")
+                self.send_to_ee("open")
+                rospy.sleep(2)
+                xarm = Manipulator()
+                xarm.moveFromBasket()
+                rospy.logwarn("Moved from basket")
+                rospy.sleep(1)
+                rospy.logwarn("Plan Execution: Move from Basket Complete")
+                xarm.disconnect()
+                rospy.sleep(.1)
+                self.publish_value = 8
+            except:
+                rospy.logwarn("ERROR: UNABLE TO MOVE TO BASKET")
+                self.state_pub.publish(10)
+                self.publish_value = 10
 
         # move to basket and drop then go back to init
         elif self.state == 8:
@@ -181,7 +208,7 @@ class PlannerNode:
                 xarm = Manipulator()
                 xarm.moveToBasket()
                 rospy.logwarn("Moved to basket")
-                rospy.sleep(5)
+                rospy.sleep(1)
                 xarm.disconnect()
                 rospy.sleep(.1)
                 rospy.logwarn("Plan Execution: Move to Basket Complete")
@@ -190,7 +217,7 @@ class PlannerNode:
                 xarm = Manipulator()
                 xarm.moveFromBasket()
                 rospy.logwarn("Moved from basket")
-                rospy.sleep(5)
+                rospy.sleep(1)
                 rospy.logwarn("Plan Execution: Move from Basket Complete")
                 xarm.disconnect()
                 rospy.sleep(.1)

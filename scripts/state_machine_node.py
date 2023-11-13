@@ -24,6 +24,7 @@ move to pregrasp: 5
 move to poi: 6
 harvest: 7
 move to basket: 8
+release & reset: 9
 ERROR: 10
 
 """
@@ -66,10 +67,10 @@ class StateMachineNode:
         """Callback for manipulator state message"""
 
         if norm(joint.velocity) < self.zero_vel_threshold:
-            rospy.loginfo_throttle_identical(10,"STATE MACHINE: Manipulator is still")
+            rospy.loginfo(f"STATE MACHINE: Manipulator is still with norm {norm(joint.velocity)}")
             self.manipulator_moving = False
         else:
-            rospy.loginfo_throttle_identical(10,"STATE MACHINE: Manipulator is moving")
+            rospy.loginfo("STATE MACHINE: Manipulator is moving")
             self.manipulator_moving = True
 
 
@@ -117,6 +118,7 @@ class StateMachineNode:
                 pass
             
             elif not self.manipulator_moving and self.plan_executed == self.state:
+            # elif self.plan_executed == self.state:
 
                 # once basket move is completed, go to init
                 if self.state == 8:
@@ -124,16 +126,14 @@ class StateMachineNode:
 
                 # if no detections are found during multiframe, go to amiga teleop
                 elif self.state == 4 and not self.detection:
-                    self.state = 10 # did multiframe but no detection 
-                    rospy.loginfo_throttle_identical(1,"ERROR: MULTIFRAMED BUT NO DETECTION")
+                    self.state = 0 # did multiframe but no detection 
+
                 # update state once plan is executed
                 else:
                     self.state += 1
             else:
                 rospy.loginfo_throttle_identical(1,f"moving: {self.manipulator_moving} , planner: {self.plan_executed},  state: {self.state}")
-            # else:
-            #     # arm is moving or exectuing a state
-            #     rospy.loginfo_throttle_identical(1,"eXXECUTING PLAN")
+
         else:
             rospy.loginfo_throttle_identical(1,"ERROR: PLANNER ERROR, UNABLE TO EXECUTE PLAN")
             self.state == 10

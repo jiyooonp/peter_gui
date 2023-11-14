@@ -94,12 +94,10 @@ class PerceptionNode:
         self.poi_pub = rospy.Publisher('/poi', Pose, queue_size=1)
         
     def user_input_callback(self, msg):
-        print("in user input callback")
         # the message is a String in the form of (x, y)
         # need to extract x, y and save it to user_selected_poi
-        self.user_selected_px = [msg.data.split(',')[0], msg.data.split(',')[1]]
+        self.user_selected_px = [int(msg.data.split(',')[0]), int(msg.data.split(',')[1])]
         print("user selected px: ", self.user_selected_px)
-        print(msg.data)
 
     def img_depth_callback(self, img, depth_img):
         print("in img depth callback")
@@ -112,6 +110,7 @@ class PerceptionNode:
             if self.user_selected_px[0] > 0:
                 print("in user mode")
                 self.user_select_pepper(img, depth_img, transformation)
+
                 # for 10 seconds, publish to the poi topic
                 start_time = time.time()
                 while time.time() < start_time + 10:
@@ -124,9 +123,7 @@ class PerceptionNode:
         
 
     def detect_peppers(self, img, depth, transformation):
-
         try:
-
             # Convert ROS Image message to OpenCV image
             image = self.bridge.imgmsg_to_cv2(img, desired_encoding='passthrough')
             depth_img = self.bridge.imgmsg_to_cv2(depth, desired_encoding='passthrough')

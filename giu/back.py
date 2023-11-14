@@ -31,6 +31,9 @@ amiga_state = -1
 harvest_times = defaultdict()
 pepper_id = 1
 
+current_values = {'x': -1, 'y': -1}
+
+
 ros_publisher = rospy.Publisher('/user_selected_points', String, queue_size=10)
 
 
@@ -83,6 +86,7 @@ def ros_thread():
     rospy.Subscriber('/camera/color/image_raw', Image, image_callback)
     rospy.Subscriber('/state', Int16, system_state_callback)
     rospy.Subscriber('/amiga_state', Int16, amiga_state_callback)
+    continuous_publish()
     rospy.spin()
 
 
@@ -108,17 +112,30 @@ def video_feed():
                     mimetype='multipart/x-mixed-replace; boundary=frame')
 
 
-@app.route('/send_to_ros', methods=['POST'])
-def send_to_ros():
-    if request.method == 'POST':
-        data = request.json  # Parse JSON data from the request
-        x = data['x']
-        y = data['y']
+# Function to continuously publish data
+def continuous_publish():
+    while True:
+        # Read the latest values
+        x, y = current_values['x'], current_values['y']
+        if x == -1 or y == -1:
+            continue
 
         # Publish the data to the ROS topic
-        ros_publisher.publish(f'({x}, {y})')
+        ros_publisher.publish(f'({int(x)}, {int(y)})')
 
-        return jsonify({'message': 'Data sent to ROS'})
+        # Wait for a short duration before publishing again
+        time.sleep(0.1)  # Adjust the sleep duration as needed
+
+
+@app.route('/send_to_ros', methods=['POST'])
+def send_to_ros():
+    global current_values
+    if request.method == 'POST':
+        data = request.json
+        current_values['x'] = data['x']
+        current_values['y'] = data['y']
+
+        return jsonify({'message': 'Data received'})
 
 
 def generate():

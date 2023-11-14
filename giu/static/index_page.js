@@ -1,15 +1,18 @@
-const systemStates = [
-    { title: 'Manual', value: '[0] idle' },
-    { title: 'Manual', value: '[1] teleop' },
-    { title: 'Manual', value: '[2] visual servo' },
-    { title: 'Manual', value: '[3] return to init' },
-    { title: 'Autonomous', value: '[4] move to init pose' },
-    { title: 'Autonomous', value: '[5] multiframe' },
-    { title: 'Autonomous', value: '[6] move to pregrasp' },
-    { title: 'Autonomous', value: '[7] move to poi' },
-    { title: 'Autonomous', value: '[8] harvest pepper' },
-    { title: 'Autonomous', value: '[9] basket drop' },
-    { title: 'Autonomous', value: '[10] Error' }
+const systemStatesManual = [
+    { title: '[0] IDLE/Amiga Teleop', value: '[0] idle' },
+    { title: '[1] xArm Teleop', value: '[1] teleop' },
+    { title: '[2] Manual: Move to Init', value: '[2] visual servo' },
+    { title: '[10] Error', value: '[10] Error' }
+];
+
+const systemStatesAutonomous = [
+    { title: '[3] Move to Init', value: '[3] return to init' },
+    { title: '[4] Multiframe', value: '[4] move to init pose' },
+    { title: '[5] Move to Pregrasp', value: '[5] multiframe' },
+    { title: '[6] Move to POI', value: '[6] move to pregrasp' },
+    { title: '[7] Harvest', value: '[7] move to poi' },
+    { title: '[8] Move to basket', value: '[8] harvest pepper' },
+    { title: '[9] Release & Reset', value: '[9] basket drop' },
 ];
 const amigaStates = [
     { title: 'Manual', value: 'Not Moving' },
@@ -31,12 +34,7 @@ function createStateCircles(states, containerId, prefix) {
         stateTitle.className = 'state-title';
         stateTitle.textContent = state.title;
 
-        const stateValue = document.createElement('div');
-        stateValue.className = 'state-value';
-        stateValue.textContent = state.value;
-
         stateRectangle.appendChild(stateTitle);
-        stateRectangle.appendChild(stateValue);
 
         container.appendChild(stateRectangle);
 
@@ -134,8 +132,9 @@ function addNewTimer(timerId, pepperId) {
 // Initialization
 
 document.addEventListener('DOMContentLoaded', () => {
-    createStateCircles(systemStates, 'system-state-machine', 'system', 'state-machine-container'); // Add 'state-machine-container' class
-    createStateCircles(amigaStates, 'amiga-state-machine', 'amiga', 'state-machine-container'); // Add 'state-machine-container' class
+    // createStateCircles(systemStatesManual, 'system-state-manual-machine', 'system', 'state-machine-container'); // Add 'state-machine-container' class
+    // createStateCircles(systemStatesAutonomous, 'system-state-autonomous-machine', 'system', 'state-machine-container'); // Add 'state-machine-container' class
+    // createStateCircles(amigaStates, 'amiga-state-machine', 'amiga', 'state-machine-container'); // Add 'state-machine-container' class
 
     const socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
 
@@ -165,7 +164,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     socket.on('amiga_state_update', function (data) {
-        console.log('Received amiga_state_update:', data.state);
         updateStateMachine(3, data.state, 'amiga');
     });
 

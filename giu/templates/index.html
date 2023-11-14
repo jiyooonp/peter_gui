@@ -33,6 +33,9 @@
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.0/socket.io.js"></script>
 
+    <!-- font -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto">
+
 </head>
 
 <body>
@@ -60,23 +63,121 @@
 
     <!-- Content -->
     <div class="container mt-5 content-container">
-        <div class="row">
-            <div class="col-md-4">
-                <h3>System State Machine</h3>
-                <div id="system-state-machine">
-                    <!-- System State Machine will be populated by JavaScript -->
+        <!-- Row for System Manual State Machine and Timers -->
+        <div class="col-md-8">
+            <!-- System Manual State Machine -->
+            <div class="col">
+                <h3>System Manual State Machine</h3>
+                <div id="system-state-manual-machine" class="state-machine-container">
+                    <!-- State 1 -->
+                    <div id="system-state-0" class="state-circle-m state-circle">
+                        <div class="state-title">[0] IDLE/Amiga Teleop</div>
+                    </div>
+                    <div class="arrow-right"></div>
+
+                    <!-- State 2 -->
+                    <div id="system-state-1" class="state-circle-m state-circle">
+                        <div class="state-title">[1] xArm Teleop</div>
+                    </div>
+                    <div class="arrow-right"></div>
+
+                    <!-- State 3 -->
+                    <div id="system-state-2" class="state-circle-m state-circle">
+                        <div class="state-title">[2] Manual: Move to Init</div>
+                    </div>
+
+                    <!-- State 10 -->
+                    <div id="system-state-10" class="state-circle-m state-circle">
+                        <div class="state-title">[10] Error</div>
+                    </div>
+                    <!-- No arrow after the last state -->
+
                 </div>
             </div>
-            <div class="col-md-4">
+            <!-- System Autonomous State Machine -->
+            <div class="col">
+                <h3>System Autonomous State Machine</h3>
+                <div id="system-state-autonomous-machine" class="state-machine-container">
+                    <!-- State 1 -->
+                    <div id="system-state-3" class="state-circle-m state-circle">
+                        <div class="state-title">[3] Move to Init</div>
+                    </div>
+                    <div class="arrow-right"></div>
+
+                    <!-- State 2 -->
+                    <div id="system-state-4" class="state-circle-m state-circle">
+                        <div class="state-title">[4] Multiframe</div>
+                    </div>
+                    <div class="arrow-right"></div>
+
+                    <!-- State 3 -->
+                    <div id="system-state-5" class="state-circle-m state-circle">
+                        <div class="state-title">[5] Move to Pregrasp</div>
+                    </div>
+                    <div class="arrow-right"></div>
+
+                    <div class="vertical-container">
+                        <!-- State 10 -->
+                        <div id="system-state-6" class="state-circle-s state-circle">
+                            <div class="state-title">[6] Move to POI</div>
+                        </div>
+
+                        <!-- State 10 -->
+                        <div id="system-state-7" class="state-circle-s state-circle">
+                            <div class="state-title">[7] Harvest</div>
+                        </div>
+                    </div>
+                    <!-- State 10 -->
+                    <div id="system-state-8" class="state-circle-m state-circle">
+                        <div class="state-title">[8] Move to basket</div>
+                    </div>
+                    <div class="arrow-right"></div>
+
+                    <!-- State 10 -->
+                    <div id="system-state-9" class="state-circle-m state-circle">
+                        <div class="state-title">[9] Release & Reset</div>
+                    </div>
+                    <!-- No arrow after the last state -->
+
+                </div>
+            </div>
+            <!-- Amiga State Machine -->
+            <div class="col">
                 <h3>Amiga State Machine</h3>
-                <div id="amiga-state-machine">
-                    <!-- Amiga State Machine will be populated by JavaScript -->
+                <div id="amiga-state-machine" class="state-machine-container">
+                    <!-- Plant 1 -->
+                    <div id="amiga-state-0" class="state-circle-l state-circle">
+                        <div class="state-title">Plant 1</div>
+                    </div>
+                    <div class="arrow-right"></div>
+
+                    <!-- Plant 2 -->
+                    <div id="amiga-state-1" class="state-circle-l state-circle">
+                        <div class="state-title">Plant 2</div>
+                    </div>
+                    <div class="arrow-right"></div>
+
+                    <!-- Plant 3 -->
+                    <div id="amiga-state-2" class="state-circle-l state-circle">
+                        <div class="state-title">Plant 3</div>
+                    </div>
+                    <div class="arrow-right"></div>
+
+                    <!-- Plant 4 -->
+                    <div id="amiga-state-3" class="state-circle-l state-circle">
+                        <div class="state-title">Plant 4</div>
+                    </div>
                 </div>
             </div>
-            <div class="col-md-4">
+        </div>
+
+        <!-- Separate Container or Row for System Autonomous State Machine -->
+        <div class="col-md-4">
+            <!-- Timers -->
+            <div class="col">
                 <h3>Timers</h3>
                 <div id="timers">
-                    <!-- Timers will be populated by JavaScript -->
+                    <!-- Content -->
                 </div>
             </div>
         </div>

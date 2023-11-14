@@ -3,6 +3,7 @@ body {
     display: flex;
     flex-direction: row;
     padding-top: 70px;
+    font-family: 'Roboto', sans-serif;
 }
 
 .content-container {

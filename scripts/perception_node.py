@@ -113,7 +113,7 @@ class PerceptionNode:
 
                 # for 10 seconds, publish to the poi topic
                 start_time = time.time()
-                while time.time() < start_time + 10:
+                while time.time() < start_time + 20:
                     self.poi_pub.publish(self.user_select_poi_bs)
             else:
                 print("in normal mode")

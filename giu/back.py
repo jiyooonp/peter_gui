@@ -108,6 +108,24 @@ def video_feed():
                     mimetype='multipart/x-mixed-replace; boundary=frame')
 
 
+<<<<<<< Updated upstream
+=======
+# Function to continuously publish data
+def continuous_publish():
+    while True:
+        # Read the latest values
+        x, y = current_values['x'], current_values['y']
+        if x == -1 or y == -1:
+            continue
+
+        # Publish the data to the ROS topic
+        ros_publisher.publish(f'{int(x)}, {int(y)}')
+
+        # Wait for a short duration before publishing again
+        time.sleep(0.1)  # Adjust the sleep duration as needed
+
+
+>>>>>>> Stashed changes
 @app.route('/send_to_ros', methods=['POST'])
 def send_to_ros():
     if request.method == 'POST':

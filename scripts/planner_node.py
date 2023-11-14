@@ -180,7 +180,7 @@ class PlannerNode:
                 xarm = Manipulator()
                 xarm.moveToBasket()
                 rospy.logwarn("Moved to basket")
-                # rospy.sleep(5)
+                rospy.sleep(13)
                 # while(xarm.arm.get_is_moving()):
                     # rospy.sleep(.1) 
                 xarm.disconnect()

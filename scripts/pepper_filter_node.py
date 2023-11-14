@@ -27,7 +27,7 @@ OBSERVATIONS_METRIC = 20 # unitless
 
 # OBSERVATIONS THRESHOLD
 # the amount of detections you need to publish a POI
-OBSERVATIONS_THRESHOLD = 5
+OBSERVATIONS_THRESHOLD = 1
 
 # if the cluster hasn't been seen in a while get rid of it
 TIME_SINCE_LAST_OB_METRIC = 10

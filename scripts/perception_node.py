@@ -74,7 +74,7 @@ class PerceptionNode:
         ts = message_filters.TimeSynchronizer([self.image_sub, self.depth_sub], queue_size=1)
         ts.registerCallback(self.img_depth_callback)
 
-        _ = rospy.Subscriber('/user_selected_poi', Point, self.user_input_callback, queue_size=1)
+        self.user_input_sub = rospy.Subscriber('/user_selected_points', String, self.user_input_callback, queue_size=1)
 
         # store the results of YOLO
         self.fruit_count = 0
@@ -90,14 +90,16 @@ class PerceptionNode:
 
         # user input
         self.user_selected_px = [-1, -1]
-        self.user_selected_poi_bs = Pose()
+        self.user_select_poi_bs = Pose()
         self.poi_pub = rospy.Publisher('/poi', Pose, queue_size=1)
+        self.user_poi_calculated = False
         
     def user_input_callback(self, msg):
         # the message is a String in the form of (x, y)
         # need to extract x, y and save it to user_selected_poi
-        self.user_selected_px = [int(msg.data.split(',')[0]), int(msg.data.split(',')[1])]
-        rospy.logwarn("user selected px: ", self.user_selected_px)
+        
+
+        self.user_selected_px = [int(msg.data.split(',')[1]), int(msg.data.split(',')[0])]
 
     def img_depth_callback(self, img, depth_img):
         
@@ -106,15 +108,14 @@ class PerceptionNode:
         synced_time = img.header.stamp
         try:
             transformation = self.tfBuffer.lookup_transform("link_base", "camera_color_optical_frame", synced_time, rospy.Duration(0.1))
-            rospy.logwarn("user selected: "+str(self.user_selected_px[0]))
             if self.user_selected_px[0] > 0:
-                rospy.logwarn("in user mode")
                 self.user_select_pepper(img, depth_img, transformation)
-
+                self.start_time = time.time()
                 # for 10 seconds, publish to the poi topic
-                start_time = time.time()
-                while time.time() < start_time + 20:
+                while time.time() < self.start_time + 5:
                     self.poi_pub.publish(self.user_select_poi_bs)
+                    rospy.logwarn(f"{self.user_select_poi_bs.position.x}, {self.user_select_poi_bs.position.y}, {self.user_select_poi_bs.position.z}")
+
                 rospy.logwarn("donme publishing")
             else:
                 # rospy.logwarn("in normal mode")
@@ -178,19 +179,23 @@ class PerceptionNode:
     def user_pose(self, depth_img, transformation):
         while self.user_selected_px == [-1, -1]:
             continue
+        if not self.user_poi_calculated:
+            x, y = self.user_selected_px
 
-        x, y = self.user_selected_px
+            z = self.get_depth(depth_img, x, y) #max(min(self.get_depth(depth_img, x, y), fruit_depth + 0.03), fruit_depth)     
 
-        z = self.get_depth(depth_img, x, y) #max(min(self.get_depth(depth_img, x, y), fruit_depth + 0.03), fruit_depth)     
+            # RS axes
+            X_rs, Y_rs, Z_rs = self.get_3D_coords(x, y, z)
 
-        # RS axes
-        X_rs, Y_rs, Z_rs = self.get_3D_coords(x, y, z)
+            X_b, Y_b, Z_b = transform_to_base_frame(
+                transformation, X_rs, Y_rs, Z_rs)
+            self.user_select_poi_bs.position.x = X_b
+            self.user_select_poi_bs.position.y = Y_b
+            self.user_select_poi_bs.position.z = Z_b
 
-        X_b, Y_b, Z_b = transform_to_base_frame(
-            transformation, X_rs, Y_rs, Z_rs)
-        self.user_select_poi_bs.position.x = X_b
-        self.user_select_poi_bs.position.y = Y_b
-        self.user_select_poi_bs.position.z = Z_b
+            self.user_poi_calculated = True
+        else:
+            pass
 
 
     def user_select_pepper(self, img, depth, transformation):

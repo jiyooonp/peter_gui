@@ -85,7 +85,7 @@ class PepperFilterNode:
                 # if it does  kalman filter it
                 min_ind, min_dist = min(dists, key=lambda d: d[1])
 
-                rospy.logwarn(len(self.clusters) ) 
+                # rospy.logwarn(len(self.clusters) ) 
                 
                 if min_dist < NEAREST_NEIGHBOR_METRIC:
                     self.clusters[min_ind].filter(new_cluster.center, new_cluster.quat)               

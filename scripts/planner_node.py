@@ -62,7 +62,7 @@ class PlannerNode:
         if command == "open":
             try:
                 rospy.wait_for_service('/gripper_service')
-                Pegasus_action = rospy.ServiceProxy('/gripper_service',Pegasus) 
+                Pegasus_action = rospy.ServiceProxy('/gripper_service',Pegasus)
                 Pegasus_action(1)
                 # rospy.logwarn("fake end effector open")
                 # rospy.sleep(3)

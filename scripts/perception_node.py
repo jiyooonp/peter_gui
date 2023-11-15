@@ -97,29 +97,30 @@ class PerceptionNode:
         # the message is a String in the form of (x, y)
         # need to extract x, y and save it to user_selected_poi
         self.user_selected_px = [int(msg.data.split(',')[0]), int(msg.data.split(',')[1])]
-        print("user selected px: ", self.user_selected_px)
+        rospy.logwarn("user selected px: ", self.user_selected_px)
 
     def img_depth_callback(self, img, depth_img):
-        print("in img depth callback")
         
         assert img.header.stamp == depth_img.header.stamp
         
         synced_time = img.header.stamp
         try:
             transformation = self.tfBuffer.lookup_transform("link_base", "camera_color_optical_frame", synced_time, rospy.Duration(0.1))
+            rospy.logwarn("user selected: "+str(self.user_selected_px[0]))
             if self.user_selected_px[0] > 0:
-                print("in user mode")
+                rospy.logwarn("in user mode")
                 self.user_select_pepper(img, depth_img, transformation)
 
                 # for 10 seconds, publish to the poi topic
                 start_time = time.time()
                 while time.time() < start_time + 20:
                     self.poi_pub.publish(self.user_select_poi_bs)
+                rospy.logwarn("donme publishing")
             else:
-                print("in normal mode")
+                # rospy.logwarn("in normal mode")
                 self.detect_peppers(img, depth_img, transformation)
         except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
-            print("Error getting the transform")
+            rospy.logwarn("Error getting the transform")
         
 
     def detect_peppers(self, img, depth, transformation):
